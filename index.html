@@ -11,8 +11,8 @@
     
     /* Set a minimum page size so scrollbars appear if the window gets too small */
     html, body {
-      min-width: 400px;  /* Minimum width */
-      min-height: 300px; /* Minimum height */
+      min-width: 500px;  /* Minimum width */
+      min-height: 375px; /* Minimum height */
     }
     
     /* Body fills the viewport and centers its content */
@@ -32,23 +32,67 @@
     .main-container {
       width: 80vw;         /* 80% of viewport width */
       height: 65vh;        /* 65% of viewport height */
-      bottom: 10vh;
+      min-width: 400px;
+      min-height: 244px;
       border: 2px solid black;
       background-color: white;
       position: relative;  /* So we can measure its corners */
       display: flex;
-      justify-content: center;
-      align-items: center;
+      flex-direction: column; /* Divide vertically */
+      justify-content: center; /* Content will be centered vertically within each half */
     }
     
-    /* Diagonal lines styling */
+    /* Top half: for text input using contenteditable div */
+    .top-half {
+      flex: 1;              /* Take half the available vertical space */
+      color: black;
+    }
+    
+    /* The contenteditable div for text input */
+    .editable {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: "Times New Roman", Times, serif;
+      color: black;
+      font-weight: bold;
+      font-size: 1rem;
+      border: none;  /* Remove any border */
+      outline: none; /* Remove focus outline */
+    }
+    
+    /* Optional: placeholder styling for contenteditable using data attribute */
+    .editable:empty::before {
+      content: attr(data-placeholder);
+      color: #aaa;
+    }
+    
+    /* Bottom half: for file upload and canvas */
+    .bottom-half {
+      flex: 1;              /* Take the other half */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Style for the canvas in the bottom half */
+    .bottom-half #upload-canvas {
+      border: none;  /* Removed dashed border */
+      width: 100%;
+      flex: 1;
+    }
+    
+    /* Diagonal lines styling (unchanged) */
     .line {
       position: absolute;
       background-color: black;
       height: 2px;         /* Line thickness */
     }
     
-    /* The SVG container for the parallelogram */
+    /* The SVG container for the parallelogram (unchanged) */
     #parallelogram-svg {
       position: absolute;
       top: 0;
@@ -60,16 +104,23 @@
 <body>
   
   <div class="main-container">
-    Center Wall
+    <!-- Top half for text input using contenteditable div -->
+    <div class="top-half">
+      <div class="editable" contenteditable="true" data-placeholder="intimately, not infinitely."></div>
+    </div>
+    <!-- Bottom half for file upload & canvas -->
+    <div class="bottom-half">
+      <canvas id="upload-canvas"></canvas>
+    </div>
   </div>
   
-  <!-- Diagonal lines -->
+  <!-- Diagonal lines (unchanged) -->
   <div class="line" id="line-top-left"></div>
   <div class="line" id="line-top-right"></div>
   <div class="line" id="line-bottom-left"></div>
   <div class="line" id="line-bottom-right"></div>
   
-  <!-- SVG container for the parallelogram -->
+  <!-- SVG container for the parallelogram (unchanged) -->
   <svg id="parallelogram-svg">
     <!-- The polygon is drawn with no fill (only a stroke) -->
     <polygon id="parallelogram-poly" fill="none" stroke="black" stroke-width="2"></polygon>
@@ -82,7 +133,6 @@
       const rect = container.getBoundingClientRect();
       
       // 2. Convert the container's coordinates from the viewport to the full page.
-      //    (We add window.pageXOffset/YOffset because getBoundingClientRect() is relative to the visible area.)
       const containerPageRect = {
         left: rect.left + window.pageXOffset,
         top: rect.top + window.pageYOffset,
@@ -91,19 +141,19 @@
       };
       
       // 3. Define minimum page dimensions.
-      const minPageWidth = 400;
-      const minPageHeight = 300;
+      const minPageWidth = 500;
+      const minPageHeight = 375;
       
       // 4. Use the maximum of the window's dimensions or the minimum values.
       let docWidth = Math.max(window.innerWidth, minPageWidth);
       let docHeight = Math.max(window.innerHeight, minPageHeight);
       
-      // 5. Update the SVG container to cover the entire "document" (at least the minimum size).
+      // 5. Update the SVG container to cover the entire "document".
       const svg = document.getElementById("parallelogram-svg");
       svg.style.width = docWidth + "px";
       svg.style.height = docHeight + "px";
       
-      // 6. Define the document (page) corners based on our chosen dimensions.
+      // 6. Define the document (page) corners.
       const docCorners = {
         topLeft: { x: 0, y: 0 },
         topRight: { x: docWidth, y: 0 },
@@ -143,27 +193,19 @@
       setLine("line-bottom-right", corners.bottomRight, docCorners.bottomRight);
       
       // 11. Draw the parallelogram along the bottom-left diagonal.
-      //     Parameters controlling its dimensions:
-      const desiredVerticalOffset = 100;  // How far upward the top edge is shifted.
-      const desiredBaseInset = 900;       // How far to inset the base endpoints along the diagonal.
-      
-      // Minimum values to prevent the shape from becoming too squished.
+      const desiredVerticalOffset = 100;  // Top edge shifted upward by 100px.
+      const desiredBaseInset = 900;       // Inset from the bottom-left diagonal.
       const minEffectiveBaseLength = 60;
       const minVerticalOffset = 30;
       
-      // 12. Define the base endpoints along the bottom-left diagonal:
-      //     P = bottom left of the document.
-      //     Q = bottom left of the container (in page coordinates).
       const P = { x: 0, y: docHeight };
       const Q = { x: corners.bottomLeft.x, y: corners.bottomLeft.y };
       
-      // 13. Compute the unit vector (direction) along the line from P to Q.
       const dx = Q.x - P.x;
       const dy = Q.y - P.y;
       const baseLength = Math.sqrt(dx * dx + dy * dy);
       const unit = { x: dx / baseLength, y: dy / baseLength };
       
-      // 14. Determine the base inset.
       let baseInset = desiredBaseInset;
       let effectiveBaseLength = baseLength - 2 * baseInset;
       if (effectiveBaseLength < minEffectiveBaseLength) {
@@ -171,61 +213,38 @@
         effectiveBaseLength = baseLength - 2 * baseInset;
       }
       
-      // 15. Compute the new base endpoints (after insetting) along the diagonal.
       const A = { x: P.x + baseInset * unit.x, y: P.y + baseInset * unit.y }; // Lower left vertex
       const B = { x: Q.x - baseInset * unit.x, y: Q.y - baseInset * unit.y }; // Lower right vertex
       
-      // 16. Ensure the vertical offset meets the minimum requirement.
       const verticalOffset = Math.max(desiredVerticalOffset, minVerticalOffset);
-      
-      // 17. Create the top vertices by shifting the base endpoints upward (vertical means subtracting from y).
       const D = { x: A.x, y: A.y - verticalOffset }; // Upper left vertex
       const C = { x: B.x, y: B.y - verticalOffset }; // Upper right vertex
       
-      // 18. Build the SVG polygon points string and update the polygon.
       const pointsStr = `${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y} ${D.x},${D.y}`;
       const polygon = document.getElementById("parallelogram-poly");
       polygon.setAttribute("points", pointsStr);
       
-      // 19. Create 10 horizontal lines that run parallel to the bottom edge,
-      //     but only between the left and right bottom diagonal lines.
-      //     We want the lines to be closer together near the top (i.e., near the bottom of the box)
-      //     and more spaced out towards the bottom (i.e., near the bottom of the document).
-      
-      // First, remove any previous horizontal lines (to avoid duplicates on resize)
+      // 12. Remove any previous horizontal lines (to avoid duplicates on resize)
       const oldHLines = document.querySelectorAll(".h-line");
       oldHLines.forEach(line => line.remove());
       
+      // 13. Create horizontal lines between the bottom diagonal lines.
       const numHLines = 12;
-      const spacingFactor = 0.1; // A small number for our logarithmic spacing
+      const spacingFactor = 0.1; // Controls the logarithmic spacing
       
-      // Get the y coordinate of the bottom of the box and the bottom of the document.
-      const yBottomBox = corners.bottomLeft.y;    // Bottom of the container (top of our region)
-      const yBottomDoc = docCorners.bottomLeft.y;   // Bottom of the document (bottom of our region)
+      const yBottomBox = corners.bottomLeft.y;
+      const yBottomDoc = docCorners.bottomLeft.y;
       
-      // We'll reverse the logarithmic distribution:
-      // Instead of starting with t = 0 at the box and t = 1 at the bottom,
-      // we want t = 1 at the box (lines close together) and t = 0 at the bottom (lines farther apart).
-      // We can compute:
-      //    t = ln(1 + (numHLines - 1 - i)*spacingFactor) / ln(1 + (numHLines - 1)*spacingFactor)
-      // and then compute:
-      //    y_line = yBottomBox + (1 - t) * (yBottomDoc - yBottomBox)
-      
+      // Reversed logarithmic distribution:
       for (let i = 0; i < numHLines; i++) {
-          const t = Math.log(1 + (numHLines - 1 - i) * spacingFactor) / Math.log(1 + (numHLines - 1) * spacingFactor);
+          const t = Math.log(1 + (numHLines - 1 - i) * spacingFactor) /
+                    Math.log(1 + (numHLines - 1) * spacingFactor);
           const y_line = yBottomBox + (1 - t) * (yBottomDoc - yBottomBox);
           
-          // Determine the left boundary (interpolating along the left diagonal):
-          // The left diagonal goes from the container's bottom-left (at x = containerPageRect.left) to the document's bottom-left (x = 0).
           const t_line = (y_line - yBottomBox) / (yBottomDoc - yBottomBox);
           const x_left = containerPageRect.left * (1 - t_line);
-          
-          // Determine the right boundary (interpolating along the right diagonal):
-          // The right diagonal goes from the container's bottom-right (at x = containerPageRect.right)
-          // to the document's bottom-right (x = docWidth).
           const x_right = containerPageRect.right + t_line * (docWidth - containerPageRect.right);
           
-          // Create the horizontal line element.
           const hLine = document.createElement("div");
           hLine.className = "h-line";
           hLine.style.position = "absolute";
@@ -238,7 +257,6 @@
       }
     }
     
-    // Run the function on page load and whenever the window is resized.
     window.onload = drawLinesAndParallelogram;
     window.onresize = drawLinesAndParallelogram;
   </script>
