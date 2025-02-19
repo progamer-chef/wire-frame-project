@@ -116,7 +116,7 @@
       pointer-events: none;
     }
     
-    /* Videos: fill container exactly; pointer events disabled so parent handles interactions */
+    /* Videos: fill container exactly; pointer events disabled in room mode */
     .file-box video {
       width: 100%;
       height: 100%;
@@ -155,8 +155,10 @@
       pointer-events: none;
     }
     
-    /* --- View Mode Styles (detail view) --- */
-    /* You can adjust padding, fonts, etc. in this section */
+    /* --- View Mode Styles (detail view) ---
+         This section controls the presentation of view mode.
+         You can change padding, fonts, etc., here.
+    */
     #detail-view {
       position: fixed;
       top: 0;
@@ -180,11 +182,23 @@
     .detail-layout.vertical {
       flex-direction: row;
     }
+    /* Special layout for audio: center everything */
+    .detail-layout.audio {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .detail-layout.audio > #detail-file-container {
+      margin-bottom: 20px;
+    }
+    .detail-layout.audio > #detail-text-container {
+      width: 50%;
+    }
     .detail-layout > div {
       box-sizing: border-box;
-      /* Remove any border or gap between the two halves */
-      margin: auto;
-      padding: 10px;
+      overflow: auto;
+      margin: 0;
+      padding: 0;
       border: none;
     }
     /* Horizontal layout dimensions */
@@ -202,7 +216,8 @@
     /* Make media in view mode scale nicely */
     #detail-file-container img,
     #detail-file-container video,
-    #detail-file-container audio {
+    #detail-file-container audio,
+    #detail-file-container .audio-box {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
@@ -213,11 +228,10 @@
     #detail-text {
       width: 100%;
       height: 100%;
-      font-family: timesnewroman;
-      font-size: 24;
+      font-family: monospace;
+      font-size: 1rem;
       padding: 10px;
       box-sizing: border-box;
-      /* Removed border so there is no separation between text and file */
       border: none;
       resize: none;
     }
@@ -257,14 +271,15 @@
     <polygon id="parallelogram-poly" fill="none" stroke="black" stroke-width="2"></polygon>
   </svg>
   
-  <!-- View mode overlay (formerly detail view) -->
+  <!-- View mode overlay (detail view) -->
   <div id="detail-view">
     <button id="detail-close">Close</button>
     <!-- The view mode layout will be generated dynamically here -->
   </div>
   
   <script>
-    // Global variable to track playable media moved to view mode
+    // Global variable to track playable media moved to view mode.
+    // For audio, we store both the hidden <audio> element and the visual (audio-box).
     let currentDetailMediaInfo = null;
     
     // DRAWING FUNCTIONS (unchanged)
@@ -424,7 +439,7 @@
       const fileBox = document.createElement("div");
       fileBox.classList.add("file-box");
       
-      // For each file type, size the box to match the file exactly (or scaled down if needed)
+      // For each file type, size the box to match the file (or scale down if needed)
       if (file.type.startsWith("image/")) {
         const img = new Image();
         img.onload = function() {
@@ -441,7 +456,6 @@
           fileBox.appendChild(img);
           fileBox.mediaType = "image";
           fileBox.mediaElement = img;
-          // Save relative dimensions.
           saveRelativeDimensions(fileBox, uploadContainer);
           makeInteractive(fileBox);
         };
@@ -450,7 +464,8 @@
         const video = document.createElement("video");
         video.loop = true;
         video.controls = false;
-        video.style.pointerEvents = "none"; // Let fileBox capture events
+        // In room mode, pointer events are disabled so that drag/resize works.
+        video.style.pointerEvents = "none";
         video.onloadedmetadata = function() {
           const naturalWidth = video.videoWidth;
           const naturalHeight = video.videoHeight;
@@ -495,8 +510,28 @@
         fileBox.appendChild(audio); // hidden element
         fileBox.mediaType = "audio";
         fileBox.mediaElement = audio;
+        fileBox.audioVisual = audioBox;
         saveRelativeDimensions(fileBox, uploadContainer);
         makeInteractive(fileBox);
+        // Attach event listeners to update audio visual colors in both modes.
+        audio.addEventListener("play", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        audio.addEventListener("pause", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        // Initialize colors.
+        updateAudioVisualColors(audio, fileBox.audioVisual);
       } else {
         // For other files, use a default 200x200 size.
         const newWidth = 200;
@@ -522,11 +557,11 @@
         }
       });
       
-      // Single click to toggle play/pause for video/audio.
+      // Single click to toggle play/pause for video/audio in room mode.
       fileBox.addEventListener("click", function(e) {
         if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
           const media = fileBox.mediaElement;
-          if(media.paused){
+          if (media.paused){
             media.play();
           } else {
             media.pause();
@@ -708,22 +743,17 @@
       // Clear any existing view mode layout (except the close button)
       detailView.querySelectorAll(".detail-layout").forEach(el => el.remove());
       
-      // Determine the file's dimensions.
-      let fileWidth, fileHeight;
-      if (fileBox.mediaType === "image" && fileBox.querySelector("img")) {
-        fileWidth = fileBox.querySelector("img").naturalWidth;
-        fileHeight = fileBox.querySelector("img").naturalHeight;
-      } else if (fileBox.mediaType === "video" && fileBox.mediaElement) {
-        fileWidth = fileBox.mediaElement.videoWidth;
-        fileHeight = fileBox.mediaElement.videoHeight;
-      } else {
-        fileWidth = fileBox.offsetWidth;
-        fileHeight = fileBox.offsetHeight;
-      }
+      // For non-audio files, determine dimensions.
+      let fileWidth = fileBox.offsetWidth;
+      let fileHeight = fileBox.offsetHeight;
       
       // Decide on layout.
-      // Landscape: file on top; Portrait or square: file on right.
-      const layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      let layoutType;
+      if (fileBox.mediaType === "audio") {
+        layoutType = "audio";
+      } else {
+        layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      }
       
       // Create the layout container.
       const layoutDiv = document.createElement("div");
@@ -737,22 +767,34 @@
       textContainer.id = "detail-text-container";
       textContainer.classList.add(layoutType);
       
-      // For playable media (video/audio), move the same element into view mode.
       let mediaElement;
-      if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+      if (fileBox.mediaType === "video") {
+        // For video, move the same media element.
         mediaElement = fileBox.mediaElement;
-        // If it is still attached in the fileBox, remove it.
+        // Remove the room mode pointer-events so that clicks work in view mode.
+        mediaElement.style.pointerEvents = "auto";
         if (mediaElement.parentElement === fileBox) {
           fileBox.removeChild(mediaElement);
         }
-        // Save a reference so that when view mode closes, we can reattach it.
         currentDetailMediaInfo = { fileBox: fileBox, mediaElement: mediaElement };
+        mediaElement.addEventListener("click", toggleMediaPlay);
+      } else if (fileBox.mediaType === "audio") {
+        // For audio, move the audio visual representation.
+        mediaElement = fileBox.audioVisual;
+        if (mediaElement.parentElement === fileBox) {
+          fileBox.removeChild(mediaElement);
+        }
+        currentDetailMediaInfo = { fileBox: fileBox, mediaVisual: mediaElement, mediaElement: fileBox.mediaElement };
+        mediaElement.addEventListener("click", audioVisualToggle);
+        // Update colors based on current play state.
+        updateAudioVisualColors(fileBox.mediaElement, mediaElement);
+        // Also update colors when play/pause events occur.
+        fileBox.mediaElement.addEventListener("play", () => updateAudioVisualColors(fileBox.mediaElement, mediaElement));
+        fileBox.mediaElement.addEventListener("pause", () => updateAudioVisualColors(fileBox.mediaElement, mediaElement));
       } else if (fileBox.mediaType === "image") {
-        // For images, clone the element.
         mediaElement = document.createElement("img");
         mediaElement.src = fileBox.querySelector("img").src;
       } else {
-        // For non-media files, simply clone the fileBox.
         mediaElement = fileBox.cloneNode(true);
       }
       
@@ -765,17 +807,56 @@
       textContainer.appendChild(textBox);
       
       // Append containers to layout.
-      // For horizontal layout (landscape file): file on top, textbox bottom.
-      // For vertical layout (portrait/square): textbox on left, file on right.
       if (layoutType === "horizontal") {
         layoutDiv.appendChild(fileContainer);
         layoutDiv.appendChild(textContainer);
-      } else {
+      } else if (layoutType === "vertical") {
         layoutDiv.appendChild(textContainer);
         layoutDiv.appendChild(fileContainer);
+      } else if (layoutType === "audio") {
+        // For audio, place the audio visual above the textbox (centered by CSS).
+        layoutDiv.appendChild(fileContainer);
+        layoutDiv.appendChild(textContainer);
       }
       
       detailView.appendChild(layoutDiv);
+    }
+    
+    // Toggle play/pause for video elements in view mode.
+    function toggleMediaPlay(e) {
+      const media = e.currentTarget;
+      if (media.paused) {
+        media.play();
+      } else {
+        media.pause();
+      }
+    }
+    
+    // Toggle play/pause for audio via the visual representation.
+    function audioVisualToggle(e) {
+      if (!currentDetailMediaInfo || !currentDetailMediaInfo.mediaElement) return;
+      const audio = currentDetailMediaInfo.mediaElement;
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+      updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+    }
+    
+    // Update the audio visual colors based on the play state.
+    // Accepts a second parameter 'visual' which is the audio visual element to update.
+    function updateAudioVisualColors(audio, visual) {
+      if (!audio || !visual) return;
+      const topDiv = visual.querySelector('.top-half');
+      const bottomDiv = visual.querySelector('.bottom-half');
+      if (audio.paused) {
+        topDiv.style.backgroundColor = "red";
+        bottomDiv.style.backgroundColor = "blue";
+      } else {
+        topDiv.style.backgroundColor = "#2fff00";
+        bottomDiv.style.backgroundColor = "#b400ff";
+      }
     }
     
     // Close view mode.
@@ -783,9 +864,22 @@
       const detailView = document.getElementById("detail-view");
       detailView.style.display = "none";
       
-      // If a playable media was moved into view mode, reattach it to its original fileBox.
-      if (currentDetailMediaInfo && currentDetailMediaInfo.mediaElement && currentDetailMediaInfo.fileBox) {
-        currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+      if (currentDetailMediaInfo) {
+        // Remove view-mode event listeners.
+        if (currentDetailMediaInfo.mediaVisual) {
+          currentDetailMediaInfo.mediaVisual.removeEventListener("click", audioVisualToggle);
+        } else if (currentDetailMediaInfo.mediaElement &&
+                   currentDetailMediaInfo.mediaElement.tagName.toLowerCase() === "video") {
+          currentDetailMediaInfo.mediaElement.removeEventListener("click", toggleMediaPlay);
+          // Restore pointer-events for room mode.
+          currentDetailMediaInfo.mediaElement.style.pointerEvents = "none";
+        }
+        // Reattach the media element (or audio visual) to its original fileBox.
+        if (currentDetailMediaInfo.mediaVisual) {
+          currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+        } else {
+          currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+        }
         currentDetailMediaInfo = null;
       }
     });
