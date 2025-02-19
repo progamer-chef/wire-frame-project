@@ -156,8 +156,8 @@
     }
     
     /* --- View Mode Styles (detail view) ---
-         This section controls the presentation of view mode.
-         You can change padding, fonts, etc., here.
+         These styles control the presentation for non-audio files.
+         (Audio view mode is handled separately below.)
     */
     #detail-view {
       position: fixed;
@@ -174,25 +174,13 @@
       width: 100%;
       height: 100%;
     }
-    /* For horizontal layout: file on top, textbox bottom */
+    /* For horizontal layout: file on top, textbox below */
     .detail-layout.horizontal {
       flex-direction: column;
     }
-    /* For vertical layout: file on right, textbox left */
+    /* For vertical layout: textbox on left, file on right */
     .detail-layout.vertical {
       flex-direction: row;
-    }
-    /* Special layout for audio: center everything */
-    .detail-layout.audio {
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .detail-layout.audio > #detail-file-container {
-      margin-bottom: 20px;
-    }
-    .detail-layout.audio > #detail-text-container {
-      width: 50%;
     }
     .detail-layout > div {
       box-sizing: border-box;
@@ -224,7 +212,7 @@
       display: block;
       margin: auto;
     }
-    /* Detail textbox styling (view mode) */
+    /* Detail textbox styling for non-audio view modes */
     #detail-text {
       width: 100%;
       height: 100%;
@@ -279,7 +267,7 @@
   
   <script>
     // Global variable to track playable media moved to view mode.
-    // For audio, we store both the hidden <audio> element and the visual (audio-box).
+    // For audio files, we also store the full-screen containers.
     let currentDetailMediaInfo = null;
     
     // DRAWING FUNCTIONS (unchanged)
@@ -423,7 +411,6 @@
     
     function handleFiles(files) {
       const uploadContainer = document.getElementById("upload-container");
-      // Limit maximum of 3 files.
       for (let file of files) {
         if (uploadContainer.children.length >= 3) {
           alert("3 files maximum");
@@ -433,13 +420,12 @@
       }
     }
     
-    // Create a file box for a given file.
+    // Create a file box for a given file (using your existing logic).
     function createFileBox(file) {
       const uploadContainer = document.getElementById("upload-container");
       const fileBox = document.createElement("div");
       fileBox.classList.add("file-box");
       
-      // For each file type, size the box to match the file (or scale down if needed)
       if (file.type.startsWith("image/")) {
         const img = new Image();
         img.onload = function() {
@@ -450,7 +436,6 @@
           const newHeight = naturalHeight * scale;
           fileBox.style.width = newWidth + "px";
           fileBox.style.height = newHeight + "px";
-          // Center the file box.
           fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
           fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
           fileBox.appendChild(img);
@@ -464,7 +449,6 @@
         const video = document.createElement("video");
         video.loop = true;
         video.controls = false;
-        // In room mode, pointer events are disabled so that drag/resize works.
         video.style.pointerEvents = "none";
         video.onloadedmetadata = function() {
           const naturalWidth = video.videoWidth;
@@ -484,20 +468,18 @@
         };
         video.src = URL.createObjectURL(file);
       } else if (file.type.startsWith("audio/")) {
-        // For audio, use fixed height of 50px and width = container width.
-        const newWidth = uploadContainer.clientWidth;
-        const newHeight = 50;
+        // For audio, use a fixed 25x25px square.
+        const newWidth = 25;
+        const newHeight = 25;
         fileBox.style.width = newWidth + "px";
         fileBox.style.height = newHeight + "px";
         fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
         fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
-        // Create hidden audio element.
         const audio = document.createElement("audio");
         audio.loop = true;
         audio.controls = false;
         audio.style.display = "none";
         audio.src = URL.createObjectURL(file);
-        // Create visual representation.
         const audioBox = document.createElement("div");
         audioBox.className = "audio-box";
         const topDiv = document.createElement("div");
@@ -507,13 +489,12 @@
         audioBox.appendChild(topDiv);
         audioBox.appendChild(bottomDiv);
         fileBox.appendChild(audioBox);
-        fileBox.appendChild(audio); // hidden element
+        fileBox.appendChild(audio);
         fileBox.mediaType = "audio";
         fileBox.mediaElement = audio;
         fileBox.audioVisual = audioBox;
         saveRelativeDimensions(fileBox, uploadContainer);
         makeInteractive(fileBox);
-        // Attach event listeners to update audio visual colors in both modes.
         audio.addEventListener("play", () => {
           if (fileBox.audioVisual) {
             updateAudioVisualColors(audio, fileBox.audioVisual);
@@ -530,10 +511,8 @@
             updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
           }
         });
-        // Initialize colors.
         updateAudioVisualColors(audio, fileBox.audioVisual);
       } else {
-        // For other files, use a default 200x200 size.
         const newWidth = 200;
         const newHeight = 200;
         fileBox.style.width = newWidth + "px";
@@ -549,7 +528,6 @@
         makeInteractive(fileBox);
       }
       
-      // Right-click to delete (cut) the file.
       fileBox.addEventListener("contextmenu", function(e) {
         e.preventDefault();
         if (confirm("Cut file?")) {
@@ -557,7 +535,6 @@
         }
       });
       
-      // Single click to toggle play/pause for video/audio in room mode.
       fileBox.addEventListener("click", function(e) {
         if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
           const media = fileBox.mediaElement;
@@ -569,7 +546,6 @@
         }
       });
       
-      // Double-click to open view mode.
       fileBox.addEventListener("dblclick", function(e) {
         openDetailView(fileBox);
       });
@@ -577,7 +553,6 @@
       uploadContainer.appendChild(fileBox);
     }
     
-    // Save fileBox dimensions as percentages relative to its container.
     function saveRelativeDimensions(el, container) {
       el.dataset.relLeft = parseFloat(el.style.left) / container.clientWidth;
       el.dataset.relTop = parseFloat(el.style.top) / container.clientHeight;
@@ -585,7 +560,6 @@
       el.dataset.relHeight = parseFloat(el.style.height) / container.clientHeight;
     }
     
-    // Update file boxes on window resize.
     function updateFileBoxesPositions() {
       const uploadContainer = document.getElementById("upload-container");
       for (const fileBox of uploadContainer.children) {
@@ -603,12 +577,9 @@
     // ------------------------------
     
     function makeInteractive(el) {
-      const threshold = 10; // pixels from any corner to trigger resizing
-      
+      const threshold = 10;
       el.addEventListener("mousedown", function(e) {
-        // Prevent text selection during drag/resize.
         e.preventDefault();
-        
         const rect = {
           left: el.offsetLeft,
           top: el.offsetTop,
@@ -627,34 +598,23 @@
         } else if (relativeX > rect.width - threshold && relativeY > rect.height - threshold) {
           corner = "bottom-right";
         }
-        
         const parent = el.parentElement;
-        
-        // Helper to update dataset after movement.
         function updateRelative() {
           el.dataset.relLeft = parseFloat(el.style.left) / parent.clientWidth;
           el.dataset.relTop = parseFloat(el.style.top) / parent.clientHeight;
           el.dataset.relWidth = parseFloat(el.style.width) / parent.clientWidth;
           el.dataset.relHeight = parseFloat(el.style.height) / parent.clientHeight;
         }
-        
         if (corner) {
-          // RESIZE mode:
-          if (corner === "top-left" || corner === "bottom-right") {
-            document.body.style.cursor = "nwse-resize";
-          } else {
-            document.body.style.cursor = "nesw-resize";
-          }
+          document.body.style.cursor = (corner === "top-left" || corner === "bottom-right") ? "nwse-resize" : "nesw-resize";
           const startX = e.clientX, startY = e.clientY;
           const startWidth = rect.width, startHeight = rect.height;
           const startLeft = rect.left, startTop = rect.top;
-          
           function resizeMove(ev) {
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
             let newWidth = startWidth, newHeight = startHeight;
             let newLeft = startLeft, newTop = startTop;
-            
             if (corner === "top-left") {
               newWidth = startWidth - dx;
               newHeight = startHeight - dy;
@@ -672,10 +632,8 @@
               newWidth = startWidth + dx;
               newHeight = startHeight + dy;
             }
-            
             newWidth = Math.max(newWidth, 30);
             newHeight = Math.max(newHeight, 30);
-            
             newLeft = Math.max(0, newLeft);
             newTop = Math.max(0, newTop);
             if(newLeft + newWidth > parent.clientWidth){
@@ -684,30 +642,24 @@
             if(newTop + newHeight > parent.clientHeight){
               newHeight = parent.clientHeight - newTop;
             }
-            
             el.style.width = newWidth + "px";
             el.style.height = newHeight + "px";
             el.style.left = newLeft + "px";
             el.style.top = newTop + "px";
           }
-          
           function resizeEnd() {
             document.body.style.cursor = "default";
             document.removeEventListener("mousemove", resizeMove);
             document.removeEventListener("mouseup", resizeEnd);
             updateRelative();
           }
-          
           document.addEventListener("mousemove", resizeMove);
           document.addEventListener("mouseup", resizeEnd);
         } else {
-          // DRAG mode:
           parent.style.outline = "2px solid red";
-          
           const startX = e.clientX, startY = e.clientY;
           const startLeft = el.offsetLeft;
           const startTop = el.offsetTop;
-          
           function dragMove(ev) {
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
@@ -718,14 +670,12 @@
             el.style.left = newLeft + "px";
             el.style.top = newTop + "px";
           }
-          
           function dragEnd() {
             parent.style.outline = "";
             document.removeEventListener("mousemove", dragMove);
             document.removeEventListener("mouseup", dragEnd);
             updateRelative();
           }
-          
           document.addEventListener("mousemove", dragMove);
           document.addEventListener("mouseup", dragEnd);
         }
@@ -739,27 +689,79 @@
     function openDetailView(fileBox) {
       const detailView = document.getElementById("detail-view");
       detailView.style.display = "block";
-      
-      // Clear any existing view mode layout (except the close button)
       detailView.querySelectorAll(".detail-layout").forEach(el => el.remove());
       
-      // For non-audio files, determine dimensions.
-      let fileWidth = fileBox.offsetWidth;
-      let fileHeight = fileBox.offsetHeight;
-      
-      // Decide on layout.
-      let layoutType;
-      if (fileBox.mediaType === "audio") {
-        layoutType = "audio";
-      } else {
-        layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      // Save current text if not already set.
+      if (typeof fileBox.savedText === "undefined") {
+        fileBox.savedText = "";
       }
       
-      // Create the layout container.
+      // Special handling for audio files:
+      if (fileBox.mediaType === "audio") {
+        const audioVisual = fileBox.audioVisual;
+        if (audioVisual && audioVisual.parentElement === fileBox) {
+          fileBox.removeChild(audioVisual);
+        }
+        const audioVisualContainer = document.createElement("div");
+        audioVisualContainer.id = "audioVisualContainer";
+        audioVisualContainer.style.position = "absolute";
+        audioVisualContainer.style.top = "0";
+        audioVisualContainer.style.left = "0";
+        audioVisualContainer.style.width = "100vw";
+        audioVisualContainer.style.height = "100vh";
+        audioVisualContainer.style.zIndex = "1";
+        audioVisual.style.width = "100%";
+        audioVisual.style.height = "100%";
+        audioVisualContainer.appendChild(audioVisual);
+        
+        const blackBoxContainer = document.createElement("div");
+        blackBoxContainer.style.position = "absolute";
+        blackBoxContainer.style.top = "50%";
+        blackBoxContainer.style.left = "50%";
+        blackBoxContainer.style.transform = "translate(-50%, -50%)";
+        blackBoxContainer.style.width = "34vw";
+        blackBoxContainer.style.height = "34vh";
+        blackBoxContainer.style.backgroundColor = "black";
+        blackBoxContainer.style.zIndex = "2";
+        const textBox = document.createElement("textarea");
+        textBox.id = "detail-text";
+        textBox.placeholder = "Enter text here...";
+        textBox.style.width = "100%";
+        textBox.style.height = "100%";
+        textBox.style.background = "transparent";
+        textBox.style.border = "none";
+        textBox.style.outline = "none";
+        textBox.style.color = "white";
+        textBox.style.fontFamily = '"Times New Roman", Times, serif';
+        textBox.style.fontSize = "3vw";
+        textBox.style.resize = "none";
+        textBox.value = fileBox.savedText;
+        textBox.addEventListener("input", function(){
+          fileBox.savedText = textBox.value;
+        });
+        blackBoxContainer.appendChild(textBox);
+        
+        detailView.appendChild(audioVisualContainer);
+        detailView.appendChild(blackBoxContainer);
+        
+        currentDetailMediaInfo = { 
+          fileBox: fileBox, 
+          mediaVisual: audioVisual, 
+          audioVisualContainer: audioVisualContainer, 
+          blackBoxContainer: blackBoxContainer, 
+          isAudio: true, 
+          mediaElement: fileBox.mediaElement 
+        };
+        return;
+      }
+      
+      // For image and video files, use the previous halves layout.
+      let fileWidth = fileBox.offsetWidth;
+      let fileHeight = fileBox.offsetHeight;
+      let layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
       const layoutDiv = document.createElement("div");
       layoutDiv.classList.add("detail-layout", layoutType);
       
-      // Create file and text containers.
       const fileContainer = document.createElement("div");
       fileContainer.id = "detail-file-container";
       fileContainer.classList.add(layoutType);
@@ -769,28 +771,13 @@
       
       let mediaElement;
       if (fileBox.mediaType === "video") {
-        // For video, move the same media element.
         mediaElement = fileBox.mediaElement;
-        // Remove the room mode pointer-events so that clicks work in view mode.
         mediaElement.style.pointerEvents = "auto";
         if (mediaElement.parentElement === fileBox) {
           fileBox.removeChild(mediaElement);
         }
         currentDetailMediaInfo = { fileBox: fileBox, mediaElement: mediaElement };
         mediaElement.addEventListener("click", toggleMediaPlay);
-      } else if (fileBox.mediaType === "audio") {
-        // For audio, move the audio visual representation.
-        mediaElement = fileBox.audioVisual;
-        if (mediaElement.parentElement === fileBox) {
-          fileBox.removeChild(mediaElement);
-        }
-        currentDetailMediaInfo = { fileBox: fileBox, mediaVisual: mediaElement, mediaElement: fileBox.mediaElement };
-        mediaElement.addEventListener("click", audioVisualToggle);
-        // Update colors based on current play state.
-        updateAudioVisualColors(fileBox.mediaElement, mediaElement);
-        // Also update colors when play/pause events occur.
-        fileBox.mediaElement.addEventListener("play", () => updateAudioVisualColors(fileBox.mediaElement, mediaElement));
-        fileBox.mediaElement.addEventListener("pause", () => updateAudioVisualColors(fileBox.mediaElement, mediaElement));
       } else if (fileBox.mediaType === "image") {
         mediaElement = document.createElement("img");
         mediaElement.src = fileBox.querySelector("img").src;
@@ -800,29 +787,26 @@
       
       fileContainer.appendChild(mediaElement);
       
-      // Create the textbox.
       const textBox = document.createElement("textarea");
       textBox.id = "detail-text";
       textBox.placeholder = "Enter text here...";
+      textBox.value = fileBox.savedText;
+      textBox.addEventListener("input", function(){
+        fileBox.savedText = textBox.value;
+      });
       textContainer.appendChild(textBox);
       
-      // Append containers to layout.
       if (layoutType === "horizontal") {
         layoutDiv.appendChild(fileContainer);
         layoutDiv.appendChild(textContainer);
-      } else if (layoutType === "vertical") {
+      } else {
         layoutDiv.appendChild(textContainer);
         layoutDiv.appendChild(fileContainer);
-      } else if (layoutType === "audio") {
-        // For audio, place the audio visual above the textbox (centered by CSS).
-        layoutDiv.appendChild(fileContainer);
-        layoutDiv.appendChild(textContainer);
       }
       
       detailView.appendChild(layoutDiv);
     }
     
-    // Toggle play/pause for video elements in view mode.
     function toggleMediaPlay(e) {
       const media = e.currentTarget;
       if (media.paused) {
@@ -832,7 +816,6 @@
       }
     }
     
-    // Toggle play/pause for audio via the visual representation.
     function audioVisualToggle(e) {
       if (!currentDetailMediaInfo || !currentDetailMediaInfo.mediaElement) return;
       const audio = currentDetailMediaInfo.mediaElement;
@@ -844,8 +827,6 @@
       updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
     }
     
-    // Update the audio visual colors based on the play state.
-    // Accepts a second parameter 'visual' which is the audio visual element to update.
     function updateAudioVisualColors(audio, visual) {
       if (!audio || !visual) return;
       const topDiv = visual.querySelector('.top-half');
@@ -859,37 +840,472 @@
       }
     }
     
-    // Close view mode.
     document.getElementById("detail-close").addEventListener("click", function() {
       const detailView = document.getElementById("detail-view");
       detailView.style.display = "none";
       
       if (currentDetailMediaInfo) {
-        // Remove view-mode event listeners.
-        if (currentDetailMediaInfo.mediaVisual) {
-          currentDetailMediaInfo.mediaVisual.removeEventListener("click", audioVisualToggle);
-        } else if (currentDetailMediaInfo.mediaElement &&
-                   currentDetailMediaInfo.mediaElement.tagName.toLowerCase() === "video") {
-          currentDetailMediaInfo.mediaElement.removeEventListener("click", toggleMediaPlay);
-          // Restore pointer-events for room mode.
-          currentDetailMediaInfo.mediaElement.style.pointerEvents = "none";
-        }
-        // Reattach the media element (or audio visual) to its original fileBox.
-        if (currentDetailMediaInfo.mediaVisual) {
+        if (currentDetailMediaInfo.isAudio) {
+          if (currentDetailMediaInfo.audioVisualContainer && currentDetailMediaInfo.audioVisualContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.audioVisualContainer);
+          }
+          if (currentDetailMediaInfo.blackBoxContainer && currentDetailMediaInfo.blackBoxContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.blackBoxContainer);
+          }
           currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
         } else {
-          currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+          if (currentDetailMediaInfo.mediaElement &&
+              currentDetailMediaInfo.mediaElement.tagName.toLowerCase() === "video") {
+            currentDetailMediaInfo.mediaElement.removeEventListener("click", toggleMediaPlay);
+            currentDetailMediaInfo.mediaElement.style.pointerEvents = "none";
+          }
+          if (currentDetailMediaInfo.mediaVisual) {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+          } else {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+          }
         }
         currentDetailMediaInfo = null;
       }
     });
     
+    // --- Default Layout Initialization ---
+    // Here you can add default text and default file boxes when the page loads.
+    // For example, you might pre-populate the editable text area and create default file boxes.
+    // The following function creates default file boxes based on a default file object.
+    function createDefaultFileBox(defaultFile) {
+      // defaultFile is an object with keys: type ("image", "video", "audio") and src (URL)
+      // Here we simulate a file box similar to createFileBox(), but using default data.
+      const uploadContainer = document.getElementById("upload-container");
+      const fileBox = document.createElement("div");
+      fileBox.classList.add("file-box");
+      // Initialize savedText property.
+      fileBox.savedText = "";
+      
+      if (defaultFile.type === "image") {
+        const img = new Image();
+        img.onload = function() {
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(img);
+          fileBox.mediaType = "image";
+          fileBox.mediaElement = img;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        img.src = defaultFile.src;
+      } else if (defaultFile.type === "video") {
+        const video = document.createElement("video");
+        video.loop = true;
+        video.controls = false;
+        video.style.pointerEvents = "none";
+        video.onloadedmetadata = function() {
+          const naturalWidth = video.videoWidth;
+          const naturalHeight = video.videoHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(video);
+          fileBox.mediaType = "video";
+          fileBox.mediaElement = video;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        video.src = defaultFile.src;
+      } else if (defaultFile.type === "audio") {
+        // For audio, we use a fixed 25x25px square.
+        const newWidth = 25;
+        const newHeight = 25;
+        fileBox.style.width = newWidth + "px";
+        fileBox.style.height = newHeight + "px";
+        fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+        fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+        const audio = document.createElement("audio");
+        audio.loop = true;
+        audio.controls = false;
+        audio.style.display = "none";
+        audio.src = defaultFile.src;
+        const audioBox = document.createElement("div");
+        audioBox.className = "audio-box";
+        const topDiv = document.createElement("div");
+        topDiv.className = "top-half";
+        const bottomDiv = document.createElement("div");
+        bottomDiv.className = "bottom-half";
+        audioBox.appendChild(topDiv);
+        audioBox.appendChild(bottomDiv);
+        fileBox.appendChild(audioBox);
+        fileBox.appendChild(audio);
+        fileBox.mediaType = "audio";
+        fileBox.mediaElement = audio;
+        fileBox.audioVisual = audioBox;
+        saveRelativeDimensions(fileBox, uploadContainer);
+        makeInteractive(fileBox);
+        audio.addEventListener("play", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        audio.addEventListener("pause", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        updateAudioVisualColors(audio, fileBox.audioVisual);
+      }
+      
+      fileBox.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        if (confirm("Cut file?")) {
+          fileBox.remove();
+        }
+      });
+      
+      fileBox.addEventListener("click", function(e) {
+        if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+          const media = fileBox.mediaElement;
+          if (media.paused){
+            media.play();
+          } else {
+            media.pause();
+          }
+        }
+      });
+      
+      fileBox.addEventListener("dblclick", function(e) {
+        openDetailView(fileBox);
+      });
+      
+      uploadContainer.appendChild(fileBox);
+    }
+    
     // ------------------------------
-    // WINDOW LOAD & RESIZE
+    // INTERACTIVE (DRAG & RESIZE) FUNCTIONALITY
     // ------------------------------
     
+    function makeInteractive(el) {
+      const threshold = 10;
+      el.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        const rect = {
+          left: el.offsetLeft,
+          top: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight
+        };
+        const relativeX = e.offsetX;
+        const relativeY = e.offsetY;
+        let corner = null;
+        if (relativeX < threshold && relativeY < threshold) {
+          corner = "top-left";
+        } else if (relativeX > rect.width - threshold && relativeY < threshold) {
+          corner = "top-right";
+        } else if (relativeX < threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-left";
+        } else if (relativeX > rect.width - threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-right";
+        }
+        const parent = el.parentElement;
+        function updateRelative() {
+          el.dataset.relLeft = parseFloat(el.style.left) / parent.clientWidth;
+          el.dataset.relTop = parseFloat(el.style.top) / parent.clientHeight;
+          el.dataset.relWidth = parseFloat(el.style.width) / parent.clientWidth;
+          el.dataset.relHeight = parseFloat(el.style.height) / parent.clientHeight;
+        }
+        if (corner) {
+          document.body.style.cursor = (corner === "top-left" || corner === "bottom-right") ? "nwse-resize" : "nesw-resize";
+          const startX = e.clientX, startY = e.clientY;
+          const startWidth = rect.width, startHeight = rect.height;
+          const startLeft = rect.left, startTop = rect.top;
+          function resizeMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newWidth = startWidth, newHeight = startHeight;
+            let newLeft = startLeft, newTop = startTop;
+            if (corner === "top-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight - dy;
+              newLeft = startLeft + dx;
+              newTop = startTop + dy;
+            } else if (corner === "top-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight - dy;
+              newTop = startTop + dy;
+            } else if (corner === "bottom-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight + dy;
+              newLeft = startLeft + dx;
+            } else if (corner === "bottom-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight + dy;
+            }
+            newWidth = Math.max(newWidth, 30);
+            newHeight = Math.max(newHeight, 30);
+            newLeft = Math.max(0, newLeft);
+            newTop = Math.max(0, newTop);
+            if(newLeft + newWidth > parent.clientWidth){
+              newWidth = parent.clientWidth - newLeft;
+            }
+            if(newTop + newHeight > parent.clientHeight){
+              newHeight = parent.clientHeight - newTop;
+            }
+            el.style.width = newWidth + "px";
+            el.style.height = newHeight + "px";
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          function resizeEnd() {
+            document.body.style.cursor = "default";
+            document.removeEventListener("mousemove", resizeMove);
+            document.removeEventListener("mouseup", resizeEnd);
+            updateRelative();
+          }
+          document.addEventListener("mousemove", resizeMove);
+          document.addEventListener("mouseup", resizeEnd);
+        } else {
+          parent.style.outline = "2px solid red";
+          const startX = e.clientX, startY = e.clientY;
+          const startLeft = el.offsetLeft;
+          const startTop = el.offsetTop;
+          function dragMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            newLeft = Math.max(0, Math.min(newLeft, parent.clientWidth - el.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, parent.clientHeight - el.offsetHeight));
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          function dragEnd() {
+            parent.style.outline = "";
+            document.removeEventListener("mousemove", dragMove);
+            document.removeEventListener("mouseup", dragEnd);
+            updateRelative();
+          }
+          document.addEventListener("mousemove", dragMove);
+          document.addEventListener("mouseup", dragEnd);
+        }
+      });
+    }
+    
+    // ------------------------------
+    // VIEW MODE FUNCTIONALITY (Double-Click)
+    // ------------------------------
+    
+    function openDetailView(fileBox) {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "block";
+      detailView.querySelectorAll(".detail-layout").forEach(el => el.remove());
+      
+      // Save text changes so they persist.
+      if (typeof fileBox.savedText === "undefined") {
+        fileBox.savedText = "";
+      }
+      
+      // Special handling for audio files:
+      if (fileBox.mediaType === "audio") {
+        const audioVisual = fileBox.audioVisual;
+        if (audioVisual && audioVisual.parentElement === fileBox) {
+          fileBox.removeChild(audioVisual);
+        }
+        const audioVisualContainer = document.createElement("div");
+        audioVisualContainer.id = "audioVisualContainer";
+        audioVisualContainer.style.position = "absolute";
+        audioVisualContainer.style.top = "0";
+        audioVisualContainer.style.left = "0";
+        audioVisualContainer.style.width = "100vw";
+        audioVisualContainer.style.height = "100vh";
+        audioVisualContainer.style.zIndex = "1";
+        audioVisual.style.width = "100%";
+        audioVisual.style.height = "100%";
+        audioVisualContainer.appendChild(audioVisual);
+        
+        const blackBoxContainer = document.createElement("div");
+        blackBoxContainer.style.position = "absolute";
+        blackBoxContainer.style.top = "50%";
+        blackBoxContainer.style.left = "50%";
+        blackBoxContainer.style.transform = "translate(-50%, -50%)";
+        blackBoxContainer.style.width = "34vw";
+        blackBoxContainer.style.height = "34vh";
+        blackBoxContainer.style.backgroundColor = "black";
+        blackBoxContainer.style.zIndex = "2";
+        const textBox = document.createElement("textarea");
+        textBox.id = "detail-text";
+        textBox.placeholder = "Enter text here...";
+        textBox.style.width = "100%";
+        textBox.style.height = "100%";
+        textBox.style.background = "transparent";
+        textBox.style.border = "none";
+        textBox.style.outline = "none";
+        textBox.style.color = "white";
+        textBox.style.fontFamily = '"Times New Roman", Times, serif';
+        textBox.style.fontSize = "3vw";
+        textBox.style.resize = "none";
+        textBox.value = fileBox.savedText;
+        textBox.addEventListener("input", function(){
+          fileBox.savedText = textBox.value;
+        });
+        blackBoxContainer.appendChild(textBox);
+        
+        detailView.appendChild(audioVisualContainer);
+        detailView.appendChild(blackBoxContainer);
+        
+        currentDetailMediaInfo = { 
+          fileBox: fileBox, 
+          mediaVisual: audioVisual, 
+          audioVisualContainer: audioVisualContainer, 
+          blackBoxContainer: blackBoxContainer, 
+          isAudio: true, 
+          mediaElement: fileBox.mediaElement 
+        };
+        return;
+      }
+      
+      // For image and video files, use the previous halves layout.
+      let fileWidth = fileBox.offsetWidth;
+      let fileHeight = fileBox.offsetHeight;
+      let layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      const layoutDiv = document.createElement("div");
+      layoutDiv.classList.add("detail-layout", layoutType);
+      
+      const fileContainer = document.createElement("div");
+      fileContainer.id = "detail-file-container";
+      fileContainer.classList.add(layoutType);
+      const textContainer = document.createElement("div");
+      textContainer.id = "detail-text-container";
+      textContainer.classList.add(layoutType);
+      
+      let mediaElement;
+      if (fileBox.mediaType === "video") {
+        mediaElement = fileBox.mediaElement;
+        mediaElement.style.pointerEvents = "auto";
+        if (mediaElement.parentElement === fileBox) {
+          fileBox.removeChild(mediaElement);
+        }
+        currentDetailMediaInfo = { fileBox: fileBox, mediaElement: mediaElement };
+        mediaElement.addEventListener("click", toggleMediaPlay);
+      } else if (fileBox.mediaType === "image") {
+        mediaElement = document.createElement("img");
+        mediaElement.src = fileBox.querySelector("img").src;
+      } else {
+        mediaElement = fileBox.cloneNode(true);
+      }
+      
+      fileContainer.appendChild(mediaElement);
+      
+      const textBox = document.createElement("textarea");
+      textBox.id = "detail-text";
+      textBox.placeholder = "Enter text here...";
+      textBox.value = fileBox.savedText;
+      textBox.addEventListener("input", function(){
+        fileBox.savedText = textBox.value;
+      });
+      textContainer.appendChild(textBox);
+      
+      if (layoutType === "horizontal") {
+        layoutDiv.appendChild(fileContainer);
+        layoutDiv.appendChild(textContainer);
+      } else {
+        layoutDiv.appendChild(textContainer);
+        layoutDiv.appendChild(fileContainer);
+      }
+      
+      detailView.appendChild(layoutDiv);
+    }
+    
+    function toggleMediaPlay(e) {
+      const media = e.currentTarget;
+      if (media.paused) {
+        media.play();
+      } else {
+        media.pause();
+      }
+    }
+    
+    function audioVisualToggle(e) {
+      if (!currentDetailMediaInfo || !currentDetailMediaInfo.mediaElement) return;
+      const audio = currentDetailMediaInfo.mediaElement;
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+      updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+    }
+    
+    function updateAudioVisualColors(audio, visual) {
+      if (!audio || !visual) return;
+      const topDiv = visual.querySelector('.top-half');
+      const bottomDiv = visual.querySelector('.bottom-half');
+      if (audio.paused) {
+        topDiv.style.backgroundColor = "red";
+        bottomDiv.style.backgroundColor = "blue";
+      } else {
+        topDiv.style.backgroundColor = "#2fff00";
+        bottomDiv.style.backgroundColor = "#b400ff";
+      }
+    }
+    
+    document.getElementById("detail-close").addEventListener("click", function() {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "none";
+      
+      if (currentDetailMediaInfo) {
+        if (currentDetailMediaInfo.isAudio) {
+          if (currentDetailMediaInfo.audioVisualContainer && currentDetailMediaInfo.audioVisualContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.audioVisualContainer);
+          }
+          if (currentDetailMediaInfo.blackBoxContainer && currentDetailMediaInfo.blackBoxContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.blackBoxContainer);
+          }
+          currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+        } else {
+          if (currentDetailMediaInfo.mediaElement &&
+              currentDetailMediaInfo.mediaElement.tagName.toLowerCase() === "video") {
+            currentDetailMediaInfo.mediaElement.removeEventListener("click", toggleMediaPlay);
+            currentDetailMediaInfo.mediaElement.style.pointerEvents = "none";
+          }
+          if (currentDetailMediaInfo.mediaVisual) {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+          } else {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+          }
+        }
+        currentDetailMediaInfo = null;
+      }
+    });
+    
+    // --- Default Layout Initialization ---
+    // Here you can implement your default layout to display files and text
+    // when the page first loads.
     window.onload = function() {
       drawLinesAndParallelogram();
+      
+      // Set default text in the editable area.
+      document.querySelector('.editable').innerText = "Welcome! This is the default text.";
+      
+      // Create default file boxes.
+      // (You can use your own URLs for default files.)
+      createDefaultFileBox({ type: "image", src: "https://via.placeholder.com/400x300" });
+      createDefaultFileBox({ type: "video", src: "https://www.w3schools.com/html/mov_bbb.mp4" });
+      createDefaultFileBox({ type: "audio", src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" });
       
       const fileInput = document.getElementById("file-input");
       fileInput.addEventListener("change", function(e) {
@@ -898,6 +1314,569 @@
       
       setupDragAndDrop();
     };
+    
+    // createDefaultFileBox simulates the creation of a file box from a default file object.
+    function createDefaultFileBox(defaultFile) {
+      const uploadContainer = document.getElementById("upload-container");
+      const fileBox = document.createElement("div");
+      fileBox.classList.add("file-box");
+      // Initialize savedText property.
+      fileBox.savedText = "";
+      
+      if (defaultFile.type === "image") {
+        const img = new Image();
+        img.onload = function() {
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(img);
+          fileBox.mediaType = "image";
+          fileBox.mediaElement = img;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        img.src = defaultFile.src;
+      } else if (defaultFile.type === "video") {
+        const video = document.createElement("video");
+        video.loop = true;
+        video.controls = false;
+        video.style.pointerEvents = "none";
+        video.onloadedmetadata = function() {
+          const naturalWidth = video.videoWidth;
+          const naturalHeight = video.videoHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(video);
+          fileBox.mediaType = "video";
+          fileBox.mediaElement = video;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        video.src = defaultFile.src;
+      } else if (defaultFile.type === "audio") {
+        // For audio, use a fixed 25x25px square.
+        const newWidth = 25;
+        const newHeight = 25;
+        fileBox.style.width = newWidth + "px";
+        fileBox.style.height = newHeight + "px";
+        fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+        fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+        const audio = document.createElement("audio");
+        audio.loop = true;
+        audio.controls = false;
+        audio.style.display = "none";
+        audio.src = defaultFile.src;
+        const audioBox = document.createElement("div");
+        audioBox.className = "audio-box";
+        const topDiv = document.createElement("div");
+        topDiv.className = "top-half";
+        const bottomDiv = document.createElement("div");
+        bottomDiv.className = "bottom-half";
+        audioBox.appendChild(topDiv);
+        audioBox.appendChild(bottomDiv);
+        fileBox.appendChild(audioBox);
+        fileBox.appendChild(audio);
+        fileBox.mediaType = "audio";
+        fileBox.mediaElement = audio;
+        fileBox.audioVisual = audioBox;
+        saveRelativeDimensions(fileBox, uploadContainer);
+        makeInteractive(fileBox);
+        audio.addEventListener("play", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        audio.addEventListener("pause", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        updateAudioVisualColors(audio, fileBox.audioVisual);
+      }
+      
+      fileBox.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        if (confirm("Cut file?")) {
+          fileBox.remove();
+        }
+      });
+      
+      fileBox.addEventListener("click", function(e) {
+        if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+          const media = fileBox.mediaElement;
+          if (media.paused){
+            media.play();
+          } else {
+            media.pause();
+          }
+        }
+      });
+      
+      fileBox.addEventListener("dblclick", function(e) {
+        openDetailView(fileBox);
+      });
+      
+      uploadContainer.appendChild(fileBox);
+    }
+    
+    // ------------------------------
+    // INTERACTIVE (DRAG & RESIZE) FUNCTIONALITY
+    // ------------------------------
+    
+    function makeInteractive(el) {
+      const threshold = 10;
+      el.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        const rect = {
+          left: el.offsetLeft,
+          top: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight
+        };
+        const relativeX = e.offsetX;
+        const relativeY = e.offsetY;
+        let corner = null;
+        if (relativeX < threshold && relativeY < threshold) {
+          corner = "top-left";
+        } else if (relativeX > rect.width - threshold && relativeY < threshold) {
+          corner = "top-right";
+        } else if (relativeX < threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-left";
+        } else if (relativeX > rect.width - threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-right";
+        }
+        const parent = el.parentElement;
+        function updateRelative() {
+          el.dataset.relLeft = parseFloat(el.style.left) / parent.clientWidth;
+          el.dataset.relTop = parseFloat(el.style.top) / parent.clientHeight;
+          el.dataset.relWidth = parseFloat(el.style.width) / parent.clientWidth;
+          el.dataset.relHeight = parseFloat(el.style.height) / parent.clientHeight;
+        }
+        if (corner) {
+          document.body.style.cursor = (corner === "top-left" || corner === "bottom-right") ? "nwse-resize" : "nesw-resize";
+          const startX = e.clientX, startY = e.clientY;
+          const startWidth = rect.width, startHeight = rect.height;
+          const startLeft = rect.left, startTop = rect.top;
+          function resizeMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newWidth = startWidth, newHeight = startHeight;
+            let newLeft = startLeft, newTop = startTop;
+            if (corner === "top-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight - dy;
+              newLeft = startLeft + dx;
+              newTop = startTop + dy;
+            } else if (corner === "top-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight - dy;
+              newTop = startTop + dy;
+            } else if (corner === "bottom-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight + dy;
+              newLeft = startLeft + dx;
+            } else if (corner === "bottom-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight + dy;
+            }
+            newWidth = Math.max(newWidth, 30);
+            newHeight = Math.max(newHeight, 30);
+            newLeft = Math.max(0, newLeft);
+            newTop = Math.max(0, newTop);
+            if(newLeft + newWidth > parent.clientWidth){
+              newWidth = parent.clientWidth - newLeft;
+            }
+            if(newTop + newHeight > parent.clientHeight){
+              newHeight = parent.clientHeight - newTop;
+            }
+            el.style.width = newWidth + "px";
+            el.style.height = newHeight + "px";
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          function resizeEnd() {
+            document.body.style.cursor = "default";
+            document.removeEventListener("mousemove", resizeMove);
+            document.removeEventListener("mouseup", resizeEnd);
+            updateRelative();
+          }
+          document.addEventListener("mousemove", resizeMove);
+          document.addEventListener("mouseup", resizeEnd);
+        } else {
+          parent.style.outline = "2px solid red";
+          const startX = e.clientX, startY = e.clientY;
+          const startLeft = el.offsetLeft;
+          const startTop = el.offsetTop;
+          function dragMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            newLeft = Math.max(0, Math.min(newLeft, parent.clientWidth - el.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, parent.clientHeight - el.offsetHeight));
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          function dragEnd() {
+            parent.style.outline = "";
+            document.removeEventListener("mousemove", dragMove);
+            document.removeEventListener("mouseup", dragEnd);
+            updateRelative();
+          }
+          document.addEventListener("mousemove", dragMove);
+          document.addEventListener("mouseup", dragEnd);
+        }
+      });
+    }
+    
+    // ------------------------------
+    // VIEW MODE FUNCTIONALITY (Double-Click)
+    // ------------------------------
+    
+    function openDetailView(fileBox) {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "block";
+      detailView.querySelectorAll(".detail-layout").forEach(el => el.remove());
+      
+      // Ensure savedText exists.
+      if (typeof fileBox.savedText === "undefined") {
+        fileBox.savedText = "";
+      }
+      
+      if (fileBox.mediaType === "audio") {
+        const audioVisual = fileBox.audioVisual;
+        if (audioVisual && audioVisual.parentElement === fileBox) {
+          fileBox.removeChild(audioVisual);
+        }
+        const audioVisualContainer = document.createElement("div");
+        audioVisualContainer.id = "audioVisualContainer";
+        audioVisualContainer.style.position = "absolute";
+        audioVisualContainer.style.top = "0";
+        audioVisualContainer.style.left = "0";
+        audioVisualContainer.style.width = "100vw";
+        audioVisualContainer.style.height = "100vh";
+        audioVisualContainer.style.zIndex = "1";
+        audioVisual.style.width = "100%";
+        audioVisual.style.height = "100%";
+        audioVisualContainer.appendChild(audioVisual);
+        
+        const blackBoxContainer = document.createElement("div");
+        blackBoxContainer.style.position = "absolute";
+        blackBoxContainer.style.top = "50%";
+        blackBoxContainer.style.left = "50%";
+        blackBoxContainer.style.transform = "translate(-50%, -50%)";
+        blackBoxContainer.style.width = "34vw";
+        blackBoxContainer.style.height = "34vh";
+        blackBoxContainer.style.backgroundColor = "black";
+        blackBoxContainer.style.zIndex = "2";
+        const textBox = document.createElement("textarea");
+        textBox.id = "detail-text";
+        textBox.placeholder = "Enter text here...";
+        textBox.style.width = "100%";
+        textBox.style.height = "100%";
+        textBox.style.background = "transparent";
+        textBox.style.border = "none";
+        textBox.style.outline = "none";
+        textBox.style.color = "white";
+        textBox.style.fontFamily = '"Times New Roman", Times, serif';
+        textBox.style.fontSize = "3vw";
+        textBox.style.resize = "none";
+        textBox.value = fileBox.savedText;
+        textBox.addEventListener("input", function(){
+          fileBox.savedText = textBox.value;
+        });
+        blackBoxContainer.appendChild(textBox);
+        
+        detailView.appendChild(audioVisualContainer);
+        detailView.appendChild(blackBoxContainer);
+        
+        currentDetailMediaInfo = { 
+          fileBox: fileBox, 
+          mediaVisual: audioVisual, 
+          audioVisualContainer: audioVisualContainer, 
+          blackBoxContainer: blackBoxContainer, 
+          isAudio: true, 
+          mediaElement: fileBox.mediaElement 
+        };
+        return;
+      }
+      
+      // For image and video files, use the previous halves layout.
+      let fileWidth = fileBox.offsetWidth;
+      let fileHeight = fileBox.offsetHeight;
+      let layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      const layoutDiv = document.createElement("div");
+      layoutDiv.classList.add("detail-layout", layoutType);
+      
+      const fileContainer = document.createElement("div");
+      fileContainer.id = "detail-file-container";
+      fileContainer.classList.add(layoutType);
+      const textContainer = document.createElement("div");
+      textContainer.id = "detail-text-container";
+      textContainer.classList.add(layoutType);
+      
+      let mediaElement;
+      if (fileBox.mediaType === "video") {
+        mediaElement = fileBox.mediaElement;
+        mediaElement.style.pointerEvents = "auto";
+        if (mediaElement.parentElement === fileBox) {
+          fileBox.removeChild(mediaElement);
+        }
+        currentDetailMediaInfo = { fileBox: fileBox, mediaElement: mediaElement };
+        mediaElement.addEventListener("click", toggleMediaPlay);
+      } else if (fileBox.mediaType === "image") {
+        mediaElement = document.createElement("img");
+        mediaElement.src = fileBox.querySelector("img").src;
+      } else {
+        mediaElement = fileBox.cloneNode(true);
+      }
+      
+      fileContainer.appendChild(mediaElement);
+      
+      const textBox = document.createElement("textarea");
+      textBox.id = "detail-text";
+      textBox.placeholder = "Enter text here...";
+      textBox.value = fileBox.savedText;
+      textBox.addEventListener("input", function(){
+        fileBox.savedText = textBox.value;
+      });
+      textContainer.appendChild(textBox);
+      
+      if (layoutType === "horizontal") {
+        layoutDiv.appendChild(fileContainer);
+        layoutDiv.appendChild(textContainer);
+      } else {
+        layoutDiv.appendChild(textContainer);
+        layoutDiv.appendChild(fileContainer);
+      }
+      
+      detailView.appendChild(layoutDiv);
+    }
+    
+    function toggleMediaPlay(e) {
+      const media = e.currentTarget;
+      if (media.paused) {
+        media.play();
+      } else {
+        media.pause();
+      }
+    }
+    
+    function audioVisualToggle(e) {
+      if (!currentDetailMediaInfo || !currentDetailMediaInfo.mediaElement) return;
+      const audio = currentDetailMediaInfo.mediaElement;
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+      updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+    }
+    
+    function updateAudioVisualColors(audio, visual) {
+      if (!audio || !visual) return;
+      const topDiv = visual.querySelector('.top-half');
+      const bottomDiv = visual.querySelector('.bottom-half');
+      if (audio.paused) {
+        topDiv.style.backgroundColor = "red";
+        bottomDiv.style.backgroundColor = "blue";
+      } else {
+        topDiv.style.backgroundColor = "#2fff00";
+        bottomDiv.style.backgroundColor = "#b400ff";
+      }
+    }
+    
+    document.getElementById("detail-close").addEventListener("click", function() {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "none";
+      
+      if (currentDetailMediaInfo) {
+        if (currentDetailMediaInfo.isAudio) {
+          if (currentDetailMediaInfo.audioVisualContainer && currentDetailMediaInfo.audioVisualContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.audioVisualContainer);
+          }
+          if (currentDetailMediaInfo.blackBoxContainer && currentDetailMediaInfo.blackBoxContainer.parentElement === detailView) {
+            detailView.removeChild(currentDetailMediaInfo.blackBoxContainer);
+          }
+          currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+        } else {
+          if (currentDetailMediaInfo.mediaElement &&
+              currentDetailMediaInfo.mediaElement.tagName.toLowerCase() === "video") {
+            currentDetailMediaInfo.mediaElement.removeEventListener("click", toggleMediaPlay);
+            currentDetailMediaInfo.mediaElement.style.pointerEvents = "none";
+          }
+          if (currentDetailMediaInfo.mediaVisual) {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaVisual);
+          } else {
+            currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+          }
+        }
+        currentDetailMediaInfo = null;
+      }
+    });
+    
+    // --- Default Layout Initialization ---
+    // When the page loads, we preset default text and default file boxes.
+    window.onload = function() {
+      drawLinesAndParallelogram();
+      
+      // Set default text in the editable area.
+      document.querySelector('.editable').innerText = "Welcome! This is the default text.";
+      
+      // Create default file boxes.
+      // Adjust the URLs below as needed.
+      createDefaultFileBox({ type: "image", src: "https://via.placeholder.com/400x300" });
+      createDefaultFileBox({ type: "video", src: "https://www.w3schools.com/html/mov_bbb.mp4" });
+      createDefaultFileBox({ type: "audio", src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" });
+      
+      const fileInput = document.getElementById("file-input");
+      fileInput.addEventListener("change", function(e) {
+        handleFiles(e.target.files);
+      });
+      
+      setupDragAndDrop();
+    };
+    
+    // createDefaultFileBox uses default file data (type and src) to mimic createFileBox().
+    function createDefaultFileBox(defaultFile) {
+      const uploadContainer = document.getElementById("upload-container");
+      const fileBox = document.createElement("div");
+      fileBox.classList.add("file-box");
+      fileBox.savedText = "";
+      
+      if (defaultFile.type === "image") {
+        const img = new Image();
+        img.onload = function() {
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(img);
+          fileBox.mediaType = "image";
+          fileBox.mediaElement = img;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        img.src = defaultFile.src;
+      } else if (defaultFile.type === "video") {
+        const video = document.createElement("video");
+        video.loop = true;
+        video.controls = false;
+        video.style.pointerEvents = "none";
+        video.onloadedmetadata = function() {
+          const naturalWidth = video.videoWidth;
+          const naturalHeight = video.videoHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          fileBox.appendChild(video);
+          fileBox.mediaType = "video";
+          fileBox.mediaElement = video;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
+        video.src = defaultFile.src;
+      } else if (defaultFile.type === "audio") {
+        // For audio, use a fixed 25x25px square.
+        const newWidth = 25;
+        const newHeight = 25;
+        fileBox.style.width = newWidth + "px";
+        fileBox.style.height = newHeight + "px";
+        fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+        fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+        const audio = document.createElement("audio");
+        audio.loop = true;
+        audio.controls = false;
+        audio.style.display = "none";
+        audio.src = defaultFile.src;
+        const audioBox = document.createElement("div");
+        audioBox.className = "audio-box";
+        const topDiv = document.createElement("div");
+        topDiv.className = "top-half";
+        const bottomDiv = document.createElement("div");
+        bottomDiv.className = "bottom-half";
+        audioBox.appendChild(topDiv);
+        audioBox.appendChild(bottomDiv);
+        fileBox.appendChild(audioBox);
+        fileBox.appendChild(audio);
+        fileBox.mediaType = "audio";
+        fileBox.mediaElement = audio;
+        fileBox.audioVisual = audioBox;
+        saveRelativeDimensions(fileBox, uploadContainer);
+        makeInteractive(fileBox);
+        audio.addEventListener("play", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        audio.addEventListener("pause", () => {
+          if (fileBox.audioVisual) {
+            updateAudioVisualColors(audio, fileBox.audioVisual);
+          }
+          if (currentDetailMediaInfo && currentDetailMediaInfo.fileBox === fileBox && currentDetailMediaInfo.mediaVisual) {
+            updateAudioVisualColors(audio, currentDetailMediaInfo.mediaVisual);
+          }
+        });
+        updateAudioVisualColors(audio, fileBox.audioVisual);
+      }
+      
+      fileBox.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        if (confirm("Cut file?")) {
+          fileBox.remove();
+        }
+      });
+      
+      fileBox.addEventListener("click", function(e) {
+        if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+          const media = fileBox.mediaElement;
+          if (media.paused){
+            media.play();
+          } else {
+            media.pause();
+          }
+        }
+      });
+      
+      fileBox.addEventListener("dblclick", function(e) {
+        openDetailView(fileBox);
+      });
+      
+      uploadContainer.appendChild(fileBox);
+    }
+    
+    // ------------------------------
+    // WINDOW LOAD & RESIZE
+    // ------------------------------
     
     window.onresize = function() {
       drawLinesAndParallelogram();
