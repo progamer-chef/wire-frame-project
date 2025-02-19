@@ -2,71 +2,71 @@
 <html lang="en">
 <head>
   <style>
-    /* Basic Reset: Remove default margin/padding and use border-box sizing */
+    /* Basic Reset */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
     
-    /* Set a minimum page size so scrollbars appear if the window gets too small */
+    /* Minimum page size */
     html, body {
-      min-width: 500px;  /* Minimum width */
-      min-height: 375px; /* Minimum height */
+      min-width: 500px;
+      min-height: 375px;
     }
     
-    /* Body fills the viewport and centers its content */
+    /* Body fills viewport */
     body {
       font-family: monospace;
-      height: 100vh;       /* Fill the viewport height */
-      width: 100vw;        /* Fill the viewport width */
+      height: 100vh;
+      width: 100vw;
       display: flex;
       justify-content: center;
       align-items: center;
       background-color: hsl(0, 0%, 97%);
-      position: relative;  /* So absolute elements inside use this as reference */
-      overflow: auto;      /* Show scrollbars if content is larger than viewport */
+      position: relative;
+      overflow: auto;
     }
     
-    /* The main container (our "box") */
+    /* Main container styling */
     .main-container {
-      width: 80vw;         /* 80% of viewport width */
-      height: 65vh;        /* 65% of viewport height */
+      width: 80vw;
+      height: 65vh;
       min-width: 400px;
       min-height: 244px;
       border: 2px solid black;
       background-color: white;
-      position: relative;  /* So we can absolutely position children inside */
+      position: relative;
     }
     
-    /* Top half: occupies exactly the top half of main-container */
+    /* Top area now 33% of main-container */
     .top-half {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 50%;
-      overflow: hidden;  /* Ensures content does not overflow */
+      height: 33%;
+      overflow: hidden;
     }
     
-    /* Bottom half: occupies exactly the bottom half of main-container */
+    /* Bottom area now occupies 67% of main-container */
     .bottom-half {
       position: absolute;
-      bottom: 0;
+      top: 33%;
       left: 0;
       width: 100%;
-      height: 50%;
+      height: 67%;
       overflow: hidden;
       padding: 10px;
     }
     
-    /* The contenteditable div for text input (inside top-half) */
+    /* Contenteditable text input */
     .editable {
       width: 100%;
       height: 100%;
-      display: grid;              /* Use grid for reliable centering */
-      place-items: center;        /* Centers content horizontally and vertically */
-      text-align: center;         /* Ensure text on each line is centered */
+      display: grid;
+      place-items: center;
+      text-align: center;
       font-family: "Times New Roman", Times, serif;
       color: black;
       font-weight: bold;
@@ -75,102 +75,199 @@
       outline: none;
     }
     
-    /* Optional: placeholder styling for contenteditable */
     .editable:empty::before {
       content: attr(data-placeholder);
       color: #aaa;
     }
     
-    /* Container for file uploads in bottom half */
+    /* Hide file input UI */
+    #file-input {
+      display: none;
+    }
+    
+    /* Upload container for files */
     #upload-container {
       width: 100%;
-      height: calc(100% - 40px); /* leave space for the file input */
-      overflow: auto;
-      position: relative;
-      background-color: white;
-    }
-    
-    #file-input {
-      margin-bottom: 10px;
-    }
-    
-    /* File box styling - no border as requested */
-    .file-box {
-      margin: 10px;
+      height: calc(100% - 40px);
       overflow: hidden;
-      position: absolute; /* so they can be moved around */
-      cursor: move;
+      position: relative;
+      background-color: #FFFFFF;
     }
     
-    /* Make images and videos fill the box while preserving their aspect ratio */
-    .file-box img,
+    /* File box styling – no visible border, absolute positioning */
+    .file-box {
+      overflow: hidden;
+      position: absolute;
+      cursor: move;
+      user-select: none;
+    }
+    
+    /* Glowing light-blue boundary on hover for file boxes */
+    .file-box:hover {
+      outline: 2px solid #ADD8E6;
+      box-shadow: 0 0 8px #ADD8E6;
+    }
+    
+    /* Images: fill container exactly */
+    .file-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      pointer-events: none;
+    }
+    
+    /* Videos: fill container exactly; pointer events disabled so parent handles interactions */
     .file-box video {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      pointer-events: none; /* so dragging file-box is easier */
+      object-fit: fill;
+      pointer-events: none;
     }
     
-    .file-box audio {
+    /* Audio visual representation: red/blue box */
+    .audio-box {
       width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .audio-box .top-half {
+      background-color: red;
+      flex: 1;
+    }
+    .audio-box .bottom-half {
+      background-color: blue;
+      flex: 1;
     }
     
-    /* Resizer handle in the bottom-right corner */
-    .resizer {
-      width: 10px;
-      height: 10px;
-      background: white;
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      cursor: se-resize;
-      z-index: 10;
-    }
-    
-    /* Diagonal lines styling (unchanged) */
+    /* Diagonal lines */
     .line {
       position: absolute;
       background-color: black;
-      height: 2px;  /* Line thickness */
+      height: 2px;
     }
     
-    /* The SVG container for the parallelogram (unchanged) */
+    /* SVG container for parallelogram */
     #parallelogram-svg {
       position: absolute;
       top: 0;
       left: 0;
-      pointer-events: none;  /* Allow clicks to pass through */
+      pointer-events: none;
+    }
+    
+    /* --- View Mode Styles (detail view) --- */
+    /* You can adjust padding, fonts, etc. in this section */
+    #detail-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: white;
+      display: none;
+      z-index: 1000;
+    }
+    .detail-layout {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+    /* For horizontal layout: file on top, textbox bottom */
+    .detail-layout.horizontal {
+      flex-direction: column;
+    }
+    /* For vertical layout: file on right, textbox left */
+    .detail-layout.vertical {
+      flex-direction: row;
+    }
+    .detail-layout > div {
+      box-sizing: border-box;
+      /* Remove any border or gap between the two halves */
+      margin: auto;
+      padding: 10px;
+      border: none;
+    }
+    /* Horizontal layout dimensions */
+    #detail-file-container.horizontal,
+    #detail-text-container.horizontal {
+      width: 100%;
+      height: 50%;
+    }
+    /* Vertical layout dimensions */
+    #detail-file-container.vertical,
+    #detail-text-container.vertical {
+      width: 50%;
+      height: 100%;
+    }
+    /* Make media in view mode scale nicely */
+    #detail-file-container img,
+    #detail-file-container video,
+    #detail-file-container audio {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      margin: auto;
+    }
+    /* Detail textbox styling (view mode) */
+    #detail-text {
+      width: 100%;
+      height: 100%;
+      font-family: timesnewroman;
+      font-size: 24;
+      padding: 10px;
+      box-sizing: border-box;
+      /* Removed border so there is no separation between text and file */
+      border: none;
+      resize: none;
+    }
+    /* Close button styling */
+    #detail-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      z-index: 1100;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   
   <div class="main-container">
-    <!-- Top half for text input using contenteditable div -->
+    <!-- Top area for text input -->
     <div class="top-half">
       <div class="editable" contenteditable="true" data-placeholder="intimately, not infinitely."></div>
     </div>
-    <!-- Bottom half for file uploads -->
+    <!-- Bottom area for file uploads -->
     <div class="bottom-half">
       <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*">
       <div id="upload-container"></div>
     </div>
   </div>
   
-  <!-- Diagonal lines (unchanged) -->
+  <!-- Diagonal lines -->
   <div class="line" id="line-top-left"></div>
   <div class="line" id="line-top-right"></div>
   <div class="line" id="line-bottom-left"></div>
   <div class="line" id="line-bottom-right"></div>
   
-  <!-- SVG container for the parallelogram (unchanged) -->
+  <!-- SVG container for parallelogram -->
   <svg id="parallelogram-svg">
-    <!-- The polygon is drawn with no fill (only a stroke) -->
     <polygon id="parallelogram-poly" fill="none" stroke="black" stroke-width="2"></polygon>
   </svg>
   
+  <!-- View mode overlay (formerly detail view) -->
+  <div id="detail-view">
+    <button id="detail-close">Close</button>
+    <!-- The view mode layout will be generated dynamically here -->
+  </div>
+  
   <script>
-    // Draw the lines and parallelogram (unchanged)
+    // Global variable to track playable media moved to view mode
+    let currentDetailMediaInfo = null;
+    
+    // DRAWING FUNCTIONS (unchanged)
     function drawLinesAndParallelogram() {
       const container = document.querySelector(".main-container");
       const rect = container.getBoundingClientRect();
@@ -184,7 +281,6 @@
       
       const minPageWidth = 500;
       const minPageHeight = 375;
-      
       let docWidth = Math.max(window.innerWidth, minPageWidth);
       let docHeight = Math.max(window.innerHeight, minPageHeight);
       
@@ -233,7 +329,6 @@
       
       const P = { x: 0, y: docHeight };
       const Q = { x: corners.bottomLeft.x, y: corners.bottomLeft.y };
-      
       const dx = Q.x - P.x;
       const dy = Q.y - P.y;
       const baseLength = Math.sqrt(dx * dx + dy * dy);
@@ -248,12 +343,11 @@
       
       const A = { x: P.x + baseInset * unit.x, y: P.y + baseInset * unit.y };
       const B = { x: Q.x - baseInset * unit.x, y: Q.y - baseInset * unit.y };
-      
       const verticalOffset = Math.max(desiredVerticalOffset, minVerticalOffset);
       const D = { x: A.x, y: A.y - verticalOffset };
       const C = { x: B.x, y: B.y - verticalOffset };
-      
       const pointsStr = `${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y} ${D.x},${D.y}`;
+      
       const polygon = document.getElementById("parallelogram-poly");
       polygon.setAttribute("points", pointsStr);
       
@@ -262,7 +356,6 @@
       
       const numHLines = 12;
       const spacingFactor = 0.1;
-      
       const yBottomBox = corners.bottomLeft.y;
       const yBottomDoc = docCorners.bottomLeft.y;
       
@@ -270,11 +363,9 @@
           const t = Math.log(1 + (numHLines - 1 - i) * spacingFactor) /
                     Math.log(1 + (numHLines - 1) * spacingFactor);
           const y_line = yBottomBox + (1 - t) * (yBottomDoc - yBottomBox);
-          
           const t_line = (y_line - yBottomBox) / (yBottomDoc - yBottomBox);
           const x_left = containerPageRect.left * (1 - t_line);
           const x_right = containerPageRect.right + t_line * (docWidth - containerPageRect.right);
-          
           const hLine = document.createElement("div");
           hLine.className = "h-line";
           hLine.style.position = "absolute";
@@ -291,11 +382,8 @@
     // DRAG & DROP / FILE HANDLING
     // ------------------------------
     
-    // Setup drag and drop on the upload container.
     function setupDragAndDrop() {
       const uploadContainer = document.getElementById("upload-container");
-      
-      // Prevent default behaviors for drag events.
       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         uploadContainer.addEventListener(eventName, (e) => {
           e.preventDefault();
@@ -304,171 +392,411 @@
       });
       
       uploadContainer.addEventListener('dragover', () => {
-        uploadContainer.style.backgroundColor = "#e0e0e0";
+        uploadContainer.style.backgroundColor = "#D3D3D3";
       });
       
       uploadContainer.addEventListener('dragleave', () => {
-        uploadContainer.style.backgroundColor = "#f9f9f9";
+        uploadContainer.style.backgroundColor = "#FFFFFF";
       });
       
       uploadContainer.addEventListener('drop', (e) => {
-        uploadContainer.style.backgroundColor = "#f9f9f9";
+        uploadContainer.style.backgroundColor = "#FFFFFF";
         const files = e.dataTransfer.files;
-        // Use the drop coordinates as the initial position for the first file.
-        handleFiles(files, e.offsetX, e.offsetY);
+        handleFiles(files);
       });
     }
     
-    // Handle file selection (via input or drop)
-    function handleFiles(files, dropX = 0, dropY = 0) {
+    function handleFiles(files) {
+      const uploadContainer = document.getElementById("upload-container");
+      // Limit maximum of 3 files.
       for (let file of files) {
-        createFileBox(file, dropX, dropY);
+        if (uploadContainer.children.length >= 3) {
+          alert("3 files maximum");
+          break;
+        }
+        createFileBox(file);
       }
     }
     
     // Create a file box for a given file.
-    function createFileBox(file, initialX, initialY) {
+    function createFileBox(file) {
       const uploadContainer = document.getElementById("upload-container");
       const fileBox = document.createElement("div");
       fileBox.classList.add("file-box");
       
-      // Set initial position based on drop (or default to 0,0)
-      fileBox.style.left = initialX + "px";
-      fileBox.style.top = initialY + "px";
-      
-      // Depending on the file type, create the appropriate element.
+      // For each file type, size the box to match the file exactly (or scaled down if needed)
       if (file.type.startsWith("image/")) {
         const img = new Image();
         img.onload = function() {
-          const originalWidth = img.naturalWidth;
-          const originalHeight = img.naturalHeight;
-          // Scale the box (e.g., up to 400x300) while preserving aspect ratio.
-          const scale = Math.min(400 / originalWidth, 300 / originalHeight, 1);
-          fileBox.style.width = (originalWidth * scale) + "px";
-          fileBox.style.height = (originalHeight * scale) + "px";
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          // Center the file box.
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
           fileBox.appendChild(img);
-          addResizer(fileBox);
-          makeDraggable(fileBox);
-        }
+          fileBox.mediaType = "image";
+          fileBox.mediaElement = img;
+          // Save relative dimensions.
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
         img.src = URL.createObjectURL(file);
       } else if (file.type.startsWith("video/")) {
         const video = document.createElement("video");
-        video.controls = true;
+        video.loop = true;
+        video.controls = false;
+        video.style.pointerEvents = "none"; // Let fileBox capture events
         video.onloadedmetadata = function() {
-          const originalWidth = video.videoWidth;
-          const originalHeight = video.videoHeight;
-          const scale = Math.min(400 / originalWidth, 300 / originalHeight, 1);
-          fileBox.style.width = (originalWidth * scale) + "px";
-          fileBox.style.height = (originalHeight * scale) + "px";
+          const naturalWidth = video.videoWidth;
+          const naturalHeight = video.videoHeight;
+          const scale = Math.min(1, uploadContainer.clientWidth / naturalWidth, uploadContainer.clientHeight / naturalHeight);
+          const newWidth = naturalWidth * scale;
+          const newHeight = naturalHeight * scale;
+          fileBox.style.width = newWidth + "px";
+          fileBox.style.height = newHeight + "px";
+          fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+          fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
           fileBox.appendChild(video);
-          addResizer(fileBox);
-          makeDraggable(fileBox);
-        }
+          fileBox.mediaType = "video";
+          fileBox.mediaElement = video;
+          saveRelativeDimensions(fileBox, uploadContainer);
+          makeInteractive(fileBox);
+        };
         video.src = URL.createObjectURL(file);
       } else if (file.type.startsWith("audio/")) {
-        fileBox.style.width = "300px";
-        fileBox.style.height = "50px";
+        // For audio, use fixed height of 50px and width = container width.
+        const newWidth = uploadContainer.clientWidth;
+        const newHeight = 50;
+        fileBox.style.width = newWidth + "px";
+        fileBox.style.height = newHeight + "px";
+        fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+        fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+        // Create hidden audio element.
         const audio = document.createElement("audio");
-        audio.controls = true;
+        audio.loop = true;
+        audio.controls = false;
+        audio.style.display = "none";
         audio.src = URL.createObjectURL(file);
-        fileBox.appendChild(audio);
-        addResizer(fileBox);
-        makeDraggable(fileBox);
+        // Create visual representation.
+        const audioBox = document.createElement("div");
+        audioBox.className = "audio-box";
+        const topDiv = document.createElement("div");
+        topDiv.className = "top-half";
+        const bottomDiv = document.createElement("div");
+        bottomDiv.className = "bottom-half";
+        audioBox.appendChild(topDiv);
+        audioBox.appendChild(bottomDiv);
+        fileBox.appendChild(audioBox);
+        fileBox.appendChild(audio); // hidden element
+        fileBox.mediaType = "audio";
+        fileBox.mediaElement = audio;
+        saveRelativeDimensions(fileBox, uploadContainer);
+        makeInteractive(fileBox);
       } else {
-        fileBox.style.width = "200px";
-        fileBox.style.height = "200px";
+        // For other files, use a default 200x200 size.
+        const newWidth = 200;
+        const newHeight = 200;
+        fileBox.style.width = newWidth + "px";
+        fileBox.style.height = newHeight + "px";
+        fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
+        fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
         const fileLink = document.createElement("a");
         fileLink.href = URL.createObjectURL(file);
         fileLink.textContent = file.name;
         fileLink.target = "_blank";
         fileBox.appendChild(fileLink);
-        addResizer(fileBox);
-        makeDraggable(fileBox);
+        saveRelativeDimensions(fileBox, uploadContainer);
+        makeInteractive(fileBox);
       }
       
-      // Allow the file box to be edited (e.g., to add captions) later on.
-      fileBox.contentEditable = "true";
+      // Right-click to delete (cut) the file.
+      fileBox.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        if (confirm("Cut file?")) {
+          fileBox.remove();
+        }
+      });
+      
+      // Single click to toggle play/pause for video/audio.
+      fileBox.addEventListener("click", function(e) {
+        if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+          const media = fileBox.mediaElement;
+          if(media.paused){
+            media.play();
+          } else {
+            media.pause();
+          }
+        }
+      });
+      
+      // Double-click to open view mode.
+      fileBox.addEventListener("dblclick", function(e) {
+        openDetailView(fileBox);
+      });
       
       uploadContainer.appendChild(fileBox);
     }
     
-    // Make an element draggable within its parent container.
-    function makeDraggable(el) {
-      let isDragging = false;
-      let startX, startY, origX, origY;
-      
-      el.addEventListener("mousedown", dragStart);
-      
-      function dragStart(e) {
-        // Skip if clicking on the resizer.
-        if (e.target.classList.contains("resizer")) return;
-        
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        const rect = el.getBoundingClientRect();
-        origX = rect.left;
-        origY = rect.top;
-        document.addEventListener("mousemove", dragMove);
-        document.addEventListener("mouseup", dragEnd);
-      }
-      
-      function dragMove(e) {
-        if (!isDragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        // Calculate new position relative to the parent container.
-        const parentRect = el.parentElement.getBoundingClientRect();
-        el.style.left = (origX + dx - parentRect.left) + "px";
-        el.style.top = (origY + dy - parentRect.top) + "px";
-      }
-      
-      function dragEnd() {
-        isDragging = false;
-        document.removeEventListener("mousemove", dragMove);
-        document.removeEventListener("mouseup", dragEnd);
+    // Save fileBox dimensions as percentages relative to its container.
+    function saveRelativeDimensions(el, container) {
+      el.dataset.relLeft = parseFloat(el.style.left) / container.clientWidth;
+      el.dataset.relTop = parseFloat(el.style.top) / container.clientHeight;
+      el.dataset.relWidth = parseFloat(el.style.width) / container.clientWidth;
+      el.dataset.relHeight = parseFloat(el.style.height) / container.clientHeight;
+    }
+    
+    // Update file boxes on window resize.
+    function updateFileBoxesPositions() {
+      const uploadContainer = document.getElementById("upload-container");
+      for (const fileBox of uploadContainer.children) {
+        if (fileBox.dataset.relLeft) {
+          fileBox.style.left = (parseFloat(fileBox.dataset.relLeft) * uploadContainer.clientWidth) + "px";
+          fileBox.style.top = (parseFloat(fileBox.dataset.relTop) * uploadContainer.clientHeight) + "px";
+          fileBox.style.width = (parseFloat(fileBox.dataset.relWidth) * uploadContainer.clientWidth) + "px";
+          fileBox.style.height = (parseFloat(fileBox.dataset.relHeight) * uploadContainer.clientHeight) + "px";
+        }
       }
     }
     
-    // Add a resizer handle to an element and make it resizable.
-    function addResizer(el) {
-      const resizer = document.createElement("div");
-      resizer.className = "resizer";
-      el.appendChild(resizer);
+    // ------------------------------
+    // INTERACTIVE (DRAG & RESIZE) FUNCTIONALITY
+    // ------------------------------
+    
+    function makeInteractive(el) {
+      const threshold = 10; // pixels from any corner to trigger resizing
       
-      let isResizing = false;
-      let startX, startY, startWidth, startHeight;
-      
-      resizer.addEventListener("mousedown", function(e) {
-        e.stopPropagation();
-        isResizing = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startWidth = parseFloat(getComputedStyle(el, null).width.replace("px", ""));
-        startHeight = parseFloat(getComputedStyle(el, null).height.replace("px", ""));
-        document.addEventListener("mousemove", resizeMove);
-        document.addEventListener("mouseup", resizeEnd);
+      el.addEventListener("mousedown", function(e) {
+        // Prevent text selection during drag/resize.
+        e.preventDefault();
+        
+        const rect = {
+          left: el.offsetLeft,
+          top: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight
+        };
+        const relativeX = e.offsetX;
+        const relativeY = e.offsetY;
+        let corner = null;
+        if (relativeX < threshold && relativeY < threshold) {
+          corner = "top-left";
+        } else if (relativeX > rect.width - threshold && relativeY < threshold) {
+          corner = "top-right";
+        } else if (relativeX < threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-left";
+        } else if (relativeX > rect.width - threshold && relativeY > rect.height - threshold) {
+          corner = "bottom-right";
+        }
+        
+        const parent = el.parentElement;
+        
+        // Helper to update dataset after movement.
+        function updateRelative() {
+          el.dataset.relLeft = parseFloat(el.style.left) / parent.clientWidth;
+          el.dataset.relTop = parseFloat(el.style.top) / parent.clientHeight;
+          el.dataset.relWidth = parseFloat(el.style.width) / parent.clientWidth;
+          el.dataset.relHeight = parseFloat(el.style.height) / parent.clientHeight;
+        }
+        
+        if (corner) {
+          // RESIZE mode:
+          if (corner === "top-left" || corner === "bottom-right") {
+            document.body.style.cursor = "nwse-resize";
+          } else {
+            document.body.style.cursor = "nesw-resize";
+          }
+          const startX = e.clientX, startY = e.clientY;
+          const startWidth = rect.width, startHeight = rect.height;
+          const startLeft = rect.left, startTop = rect.top;
+          
+          function resizeMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newWidth = startWidth, newHeight = startHeight;
+            let newLeft = startLeft, newTop = startTop;
+            
+            if (corner === "top-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight - dy;
+              newLeft = startLeft + dx;
+              newTop = startTop + dy;
+            } else if (corner === "top-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight - dy;
+              newTop = startTop + dy;
+            } else if (corner === "bottom-left") {
+              newWidth = startWidth - dx;
+              newHeight = startHeight + dy;
+              newLeft = startLeft + dx;
+            } else if (corner === "bottom-right") {
+              newWidth = startWidth + dx;
+              newHeight = startHeight + dy;
+            }
+            
+            newWidth = Math.max(newWidth, 30);
+            newHeight = Math.max(newHeight, 30);
+            
+            newLeft = Math.max(0, newLeft);
+            newTop = Math.max(0, newTop);
+            if(newLeft + newWidth > parent.clientWidth){
+              newWidth = parent.clientWidth - newLeft;
+            }
+            if(newTop + newHeight > parent.clientHeight){
+              newHeight = parent.clientHeight - newTop;
+            }
+            
+            el.style.width = newWidth + "px";
+            el.style.height = newHeight + "px";
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          
+          function resizeEnd() {
+            document.body.style.cursor = "default";
+            document.removeEventListener("mousemove", resizeMove);
+            document.removeEventListener("mouseup", resizeEnd);
+            updateRelative();
+          }
+          
+          document.addEventListener("mousemove", resizeMove);
+          document.addEventListener("mouseup", resizeEnd);
+        } else {
+          // DRAG mode:
+          parent.style.outline = "2px solid red";
+          
+          const startX = e.clientX, startY = e.clientY;
+          const startLeft = el.offsetLeft;
+          const startTop = el.offsetTop;
+          
+          function dragMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            newLeft = Math.max(0, Math.min(newLeft, parent.clientWidth - el.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, parent.clientHeight - el.offsetHeight));
+            el.style.left = newLeft + "px";
+            el.style.top = newTop + "px";
+          }
+          
+          function dragEnd() {
+            parent.style.outline = "";
+            document.removeEventListener("mousemove", dragMove);
+            document.removeEventListener("mouseup", dragEnd);
+            updateRelative();
+          }
+          
+          document.addEventListener("mousemove", dragMove);
+          document.addEventListener("mouseup", dragEnd);
+        }
       });
-      
-      function resizeMove(e) {
-        if (!isResizing) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        el.style.width = (startWidth + dx) + "px";
-        el.style.height = (startHeight + dy) + "px";
-      }
-      
-      function resizeEnd() {
-        isResizing = false;
-        document.removeEventListener("mousemove", resizeMove);
-        document.removeEventListener("mouseup", resizeEnd);
-      }
     }
+    
+    // ------------------------------
+    // VIEW MODE FUNCTIONALITY (Double-Click)
+    // ------------------------------
+    
+    function openDetailView(fileBox) {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "block";
+      
+      // Clear any existing view mode layout (except the close button)
+      detailView.querySelectorAll(".detail-layout").forEach(el => el.remove());
+      
+      // Determine the file's dimensions.
+      let fileWidth, fileHeight;
+      if (fileBox.mediaType === "image" && fileBox.querySelector("img")) {
+        fileWidth = fileBox.querySelector("img").naturalWidth;
+        fileHeight = fileBox.querySelector("img").naturalHeight;
+      } else if (fileBox.mediaType === "video" && fileBox.mediaElement) {
+        fileWidth = fileBox.mediaElement.videoWidth;
+        fileHeight = fileBox.mediaElement.videoHeight;
+      } else {
+        fileWidth = fileBox.offsetWidth;
+        fileHeight = fileBox.offsetHeight;
+      }
+      
+      // Decide on layout.
+      // Landscape: file on top; Portrait or square: file on right.
+      const layoutType = (fileWidth > fileHeight) ? "horizontal" : "vertical";
+      
+      // Create the layout container.
+      const layoutDiv = document.createElement("div");
+      layoutDiv.classList.add("detail-layout", layoutType);
+      
+      // Create file and text containers.
+      const fileContainer = document.createElement("div");
+      fileContainer.id = "detail-file-container";
+      fileContainer.classList.add(layoutType);
+      const textContainer = document.createElement("div");
+      textContainer.id = "detail-text-container";
+      textContainer.classList.add(layoutType);
+      
+      // For playable media (video/audio), move the same element into view mode.
+      let mediaElement;
+      if (fileBox.mediaType === "video" || fileBox.mediaType === "audio") {
+        mediaElement = fileBox.mediaElement;
+        // If it is still attached in the fileBox, remove it.
+        if (mediaElement.parentElement === fileBox) {
+          fileBox.removeChild(mediaElement);
+        }
+        // Save a reference so that when view mode closes, we can reattach it.
+        currentDetailMediaInfo = { fileBox: fileBox, mediaElement: mediaElement };
+      } else if (fileBox.mediaType === "image") {
+        // For images, clone the element.
+        mediaElement = document.createElement("img");
+        mediaElement.src = fileBox.querySelector("img").src;
+      } else {
+        // For non-media files, simply clone the fileBox.
+        mediaElement = fileBox.cloneNode(true);
+      }
+      
+      fileContainer.appendChild(mediaElement);
+      
+      // Create the textbox.
+      const textBox = document.createElement("textarea");
+      textBox.id = "detail-text";
+      textBox.placeholder = "Enter text here...";
+      textContainer.appendChild(textBox);
+      
+      // Append containers to layout.
+      // For horizontal layout (landscape file): file on top, textbox bottom.
+      // For vertical layout (portrait/square): textbox on left, file on right.
+      if (layoutType === "horizontal") {
+        layoutDiv.appendChild(fileContainer);
+        layoutDiv.appendChild(textContainer);
+      } else {
+        layoutDiv.appendChild(textContainer);
+        layoutDiv.appendChild(fileContainer);
+      }
+      
+      detailView.appendChild(layoutDiv);
+    }
+    
+    // Close view mode.
+    document.getElementById("detail-close").addEventListener("click", function() {
+      const detailView = document.getElementById("detail-view");
+      detailView.style.display = "none";
+      
+      // If a playable media was moved into view mode, reattach it to its original fileBox.
+      if (currentDetailMediaInfo && currentDetailMediaInfo.mediaElement && currentDetailMediaInfo.fileBox) {
+        currentDetailMediaInfo.fileBox.appendChild(currentDetailMediaInfo.mediaElement);
+        currentDetailMediaInfo = null;
+      }
+    });
+    
+    // ------------------------------
+    // WINDOW LOAD & RESIZE
+    // ------------------------------
     
     window.onload = function() {
       drawLinesAndParallelogram();
       
-      // File input handling.
       const fileInput = document.getElementById("file-input");
       fileInput.addEventListener("change", function(e) {
         handleFiles(e.target.files);
@@ -477,7 +805,10 @@
       setupDragAndDrop();
     };
     
-    window.onresize = drawLinesAndParallelogram;
+    window.onresize = function() {
+      drawLinesAndParallelogram();
+      updateFileBoxesPositions();
+    };
   </script>
   
 </body>
