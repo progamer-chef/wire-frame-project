@@ -216,7 +216,7 @@
     #detail-text {
       width: 100%;
       height: 100%;
-      font-family: serif;
+      font-family: monospace;
       font-size: 1rem;
       padding: 10px;
       box-sizing: border-box;
@@ -1560,63 +1560,80 @@
         fileBox.savedText = "";
       }
       
-      if (fileBox.mediaType === "audio") {
-        const audioVisual = fileBox.audioVisual;
-        if (audioVisual && audioVisual.parentElement === fileBox) {
-          fileBox.removeChild(audioVisual);
-        }
-        const audioVisualContainer = document.createElement("div");
-        audioVisualContainer.id = "audioVisualContainer";
-        audioVisualContainer.style.position = "absolute";
-        audioVisualContainer.style.top = "0";
-        audioVisualContainer.style.left = "0";
-        audioVisualContainer.style.width = "100vw";
-        audioVisualContainer.style.height = "100vh";
-        audioVisualContainer.style.zIndex = "1";
-        audioVisual.style.width = "100%";
-        audioVisual.style.height = "100%";
-        audioVisualContainer.appendChild(audioVisual);
-        
-        const blackBoxContainer = document.createElement("div");
-        blackBoxContainer.style.position = "absolute";
-        blackBoxContainer.style.top = "50%";
-        blackBoxContainer.style.left = "50%";
-        blackBoxContainer.style.transform = "translate(-50%, -50%)";
-        blackBoxContainer.style.width = "34vw";
-        blackBoxContainer.style.height = "34vh";
-        blackBoxContainer.style.backgroundColor = "black";
-        blackBoxContainer.style.zIndex = "2";
-        const textBox = document.createElement("textarea");
-        textBox.id = "detail-text";
-        textBox.placeholder = "Enter text here...";
-        textBox.style.width = "100%";
-        textBox.style.height = "100%";
-        textBox.style.background = "transparent";
-        textBox.style.border = "none";
-        textBox.style.outline = "none";
-        textBox.style.color = "white";
-        textBox.style.fontFamily = '"Times New Roman", Times, serif';
-        textBox.style.fontSize = "3vw";
-        textBox.style.resize = "none";
-        textBox.value = fileBox.savedText;
-        textBox.addEventListener("input", function(){
-          fileBox.savedText = textBox.value;
-        });
-        blackBoxContainer.appendChild(textBox);
-        
-        detailView.appendChild(audioVisualContainer);
-        detailView.appendChild(blackBoxContainer);
-        
-        currentDetailMediaInfo = { 
-          fileBox: fileBox, 
-          mediaVisual: audioVisual, 
-          audioVisualContainer: audioVisualContainer, 
-          blackBoxContainer: blackBoxContainer, 
-          isAudio: true, 
-          mediaElement: fileBox.mediaElement 
-        };
-        return;
-      }
+     if (fileBox.mediaType === "audio") {
+  const audioVisual = fileBox.audioVisual;
+  if (audioVisual && audioVisual.parentElement === fileBox) {
+    fileBox.removeChild(audioVisual);
+  }
+  const audioVisualContainer = document.createElement("div");
+  audioVisualContainer.id = "audioVisualContainer";
+  audioVisualContainer.style.position = "absolute";
+  audioVisualContainer.style.top = "0";
+  audioVisualContainer.style.left = "0";
+  audioVisualContainer.style.width = "100vw";
+  audioVisualContainer.style.height = "100vh";
+  audioVisualContainer.style.zIndex = "1";
+  audioVisual.style.width = "100%";
+  audioVisual.style.height = "100%";
+  audioVisualContainer.appendChild(audioVisual);
+  
+  // Make the audioVisualContainer toggle play/pause when clicked.
+  audioVisualContainer.addEventListener("click", function(){
+    const audio = fileBox.mediaElement;
+    if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  });
+  
+  const blackBoxContainer = document.createElement("div");
+  blackBoxContainer.style.position = "absolute";
+  blackBoxContainer.style.top = "50%";
+  blackBoxContainer.style.left = "50%";
+  blackBoxContainer.style.transform = "translate(-50%, -50%)";
+  blackBoxContainer.style.width = "34vw";
+  blackBoxContainer.style.height = "34vh";
+  blackBoxContainer.style.backgroundColor = "black";
+  blackBoxContainer.style.zIndex = "2";
+  
+  // Set default text if none exists
+  if (fileBox.savedText === "") {
+    fileBox.savedText = "Default audio caption text.";
+  }
+  
+  const textBox = document.createElement("textarea");
+  textBox.id = "detail-text";
+  textBox.placeholder = "Enter text here...";
+  textBox.style.width = "100%";
+  textBox.style.height = "100%";
+  textBox.style.background = "transparent";
+  textBox.style.border = "none";
+  textBox.style.outline = "none";
+  textBox.style.color = "white";
+  textBox.style.fontFamily = "monospace";
+  textBox.style.fontSize = "3vw";
+  textBox.style.resize = "none";
+  textBox.value = "healing hrtz\n\ncurrent draft created 9-7-2024";
+  textBox.addEventListener("input", function(){
+    fileBox.savedText = "hello babe";
+  });
+  blackBoxContainer.appendChild(textBox);
+  
+  detailView.appendChild(audioVisualContainer);
+  detailView.appendChild(blackBoxContainer);
+  
+  currentDetailMediaInfo = { 
+    fileBox: fileBox, 
+    mediaVisual: audioVisual, 
+    audioVisualContainer: audioVisualContainer, 
+    blackBoxContainer: blackBoxContainer, 
+    isAudio: true, 
+    mediaElement: fileBox.mediaElement 
+  };
+  return;
+}
+
       
       // For image and video files, use the previous halves layout.
       let fileWidth = fileBox.offsetWidth;
@@ -1759,7 +1776,7 @@
       const uploadContainer = document.getElementById("upload-container");
       const fileBox = document.createElement("div");
       fileBox.classList.add("file-box");
-      fileBox.savedText = "";
+      fileBox.savedText = "T-Shirt Design for アオちゃん「Ao-Chan」\n\n アオちゃんwas my coworker for a café I worked at. She's an amazing pastry chef, who's super hard working, always fasionable, and was one of the nicest people to me in Japan. She was a great older-sister figure to me, and on the last day I met her, I made this shirt for her. \n\n In the top right, the blue apron was our standard issue work uniform. Caption says: 「The Ao-Chan that always works hard at work」In the bottom left is my attempt *ATTEMPT* at making fake Japanese fasion. The shirt says COOL DESIGN pronounced with japanese phonetics. The caption says 「The Ao-chan that's always fashionable」The bottom right features an Ao-Chan in a Tiger suit. Ao-Chan is slightly older than her boyfriend, so one day during work I was explaining the concept of a cougar, which thought was funny. it became a small inside joke. It was my impression that Japanese people are not familar between distinguishing cougars and other big cats, so I simplfied the concept to a tiger. It features the 「Tiger-fied Ao-Chan」 ready to *pounce* on her prey. The sunflowers come from the kanji for Ao-Chan's uncontracted name Aoi: 葵 is the same character as the third kanji in 向日葵, meaning sunflower. Ao-Chan also loves her cat, so that's a random picture of a cat rastified. The hand drawn characters at the top say *Aoi's T-shirt, do not steal* 「my one-chan is mecha steki yo」means, *my older sister is totally rad* in too-casual Nipponglish";
       
       if (defaultFile.type === "image") {
         const img = new Image();
@@ -1785,6 +1802,7 @@
         img.src = defaultFile.src;
       } else if (defaultFile.type === "video") {
         const video = document.createElement("video");
+        fileBox.savedText = defaultFile.defaultText || "ソンダー「sonder」\n\n\nsonder\nnoun\n  - the feeling one has on realizing that every other individual one sees has a life as full and real as one’s own, in which they are the central character and others, including oneself, have secondary or insignificant roles";
         video.loop = true;
         video.controls = false;
         video.style.pointerEvents = "none";
