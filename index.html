@@ -1738,7 +1738,7 @@
       drawLinesAndParallelogram();
       
       // Set default text in the editable area.
-      document.querySelector('.editable').innerText = "Welcome! This is the default text.";
+      document.querySelector('.editable').innerText = "展自へようこそ\nwelcome to tenji";
       
       // Create default file boxes.
       // Adjust the URLs below as needed.
@@ -1832,7 +1832,7 @@
         fileBox.mediaType = "audio";
         fileBox.mediaElement = audio;
         fileBox.audioVisual = audioBox;
-         fileBox.style.transform = "translateY(-50px) translateX(35px) scale(6.5,1.5)";
+         fileBox.style.transform = "translateY(50px) translateX(35px) scale(6.5,1.5)";
         saveRelativeDimensions(fileBox, uploadContainer);
         makeInteractive(fileBox);
         audio.addEventListener("play", () => {
