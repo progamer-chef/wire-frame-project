@@ -1742,7 +1742,7 @@
       
       // Create default file boxes.
       // Adjust the URLs below as needed.
-      createDefaultFileBox({ type: "image", src: "aochan.jpg" });
+      createDefaultFileBox({ type: "image", src: "aochan.jpg", });
       createDefaultFileBox({ type: "video", src: "sonder_2_1.mp4" });
       createDefaultFileBox({ type: "audio", src: "9-7 audio.mp3" });
       
@@ -1773,6 +1773,9 @@
           fileBox.style.height = newHeight + "px";
           fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
           fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+          
+           fileBox.style.transform = "translateX(-150px)";
+          
           fileBox.appendChild(img);
           fileBox.mediaType = "image";
           fileBox.mediaElement = img;
@@ -1795,6 +1798,7 @@
           fileBox.style.height = newHeight + "px";
           fileBox.style.left = ((uploadContainer.clientWidth - newWidth) / 2) + "px";
           fileBox.style.top = ((uploadContainer.clientHeight - newHeight) / 2) + "px";
+           fileBox.style.transform = "translateX(180px)";
           fileBox.appendChild(video);
           fileBox.mediaType = "video";
           fileBox.mediaElement = video;
@@ -1828,6 +1832,7 @@
         fileBox.mediaType = "audio";
         fileBox.mediaElement = audio;
         fileBox.audioVisual = audioBox;
+         fileBox.style.transform = "translateY(-50px) translateX(35px) scale(6.5,1.5)";
         saveRelativeDimensions(fileBox, uploadContainer);
         makeInteractive(fileBox);
         audio.addEventListener("play", () => {
