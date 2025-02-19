@@ -37,7 +37,6 @@
       border: 2px solid black;
       background-color: white;
       position: relative;  /* So we can absolutely position children inside */
-      /* Removed flex-direction here so we can control positioning manually */
     }
     
     /* Top half: occupies exactly the top half of main-container */
@@ -57,6 +56,8 @@
       left: 0;
       width: 100%;
       height: 50%;
+      overflow: hidden;
+      padding: 10px;
     }
     
     /* The contenteditable div for text input (inside top-half) */
@@ -80,11 +81,50 @@
       color: #aaa;
     }
     
-    /* Style for the canvas in the bottom half (unchanged) */
-    .bottom-half #upload-canvas {
-      border: none;  /* Removed any border */
+    /* Container for file uploads in bottom half */
+    #upload-container {
+      width: 100%;
+      height: calc(100% - 40px); /* leave space for the file input */
+      overflow: auto;
+      position: relative;
+      background-color: white;
+    }
+    
+    #file-input {
+      margin-bottom: 10px;
+    }
+    
+    /* File box styling - no border as requested */
+    .file-box {
+      margin: 10px;
+      overflow: hidden;
+      position: absolute; /* so they can be moved around */
+      cursor: move;
+    }
+    
+    /* Make images and videos fill the box while preserving their aspect ratio */
+    .file-box img,
+    .file-box video {
       width: 100%;
       height: 100%;
+      object-fit: contain;
+      pointer-events: none; /* so dragging file-box is easier */
+    }
+    
+    .file-box audio {
+      width: 100%;
+    }
+    
+    /* Resizer handle in the bottom-right corner */
+    .resizer {
+      width: 10px;
+      height: 10px;
+      background: white;
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      cursor: se-resize;
+      z-index: 10;
     }
     
     /* Diagonal lines styling (unchanged) */
@@ -110,9 +150,10 @@
     <div class="top-half">
       <div class="editable" contenteditable="true" data-placeholder="intimately, not infinitely."></div>
     </div>
-    <!-- Bottom half for file upload & canvas -->
+    <!-- Bottom half for file uploads -->
     <div class="bottom-half">
-      <canvas id="upload-canvas"></canvas>
+      <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*">
+      <div id="upload-container"></div>
     </div>
   </div>
   
@@ -129,8 +170,8 @@
   </svg>
   
   <script>
+    // Draw the lines and parallelogram (unchanged)
     function drawLinesAndParallelogram() {
-      // Existing JavaScript to draw diagonals, parallelogram, and horizontal lines remains unchanged.
       const container = document.querySelector(".main-container");
       const rect = container.getBoundingClientRect();
       
@@ -246,7 +287,196 @@
       }
     }
     
-    window.onload = drawLinesAndParallelogram;
+    // ------------------------------
+    // DRAG & DROP / FILE HANDLING
+    // ------------------------------
+    
+    // Setup drag and drop on the upload container.
+    function setupDragAndDrop() {
+      const uploadContainer = document.getElementById("upload-container");
+      
+      // Prevent default behaviors for drag events.
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+      
+      uploadContainer.addEventListener('dragover', () => {
+        uploadContainer.style.backgroundColor = "#e0e0e0";
+      });
+      
+      uploadContainer.addEventListener('dragleave', () => {
+        uploadContainer.style.backgroundColor = "#f9f9f9";
+      });
+      
+      uploadContainer.addEventListener('drop', (e) => {
+        uploadContainer.style.backgroundColor = "#f9f9f9";
+        const files = e.dataTransfer.files;
+        // Use the drop coordinates as the initial position for the first file.
+        handleFiles(files, e.offsetX, e.offsetY);
+      });
+    }
+    
+    // Handle file selection (via input or drop)
+    function handleFiles(files, dropX = 0, dropY = 0) {
+      for (let file of files) {
+        createFileBox(file, dropX, dropY);
+      }
+    }
+    
+    // Create a file box for a given file.
+    function createFileBox(file, initialX, initialY) {
+      const uploadContainer = document.getElementById("upload-container");
+      const fileBox = document.createElement("div");
+      fileBox.classList.add("file-box");
+      
+      // Set initial position based on drop (or default to 0,0)
+      fileBox.style.left = initialX + "px";
+      fileBox.style.top = initialY + "px";
+      
+      // Depending on the file type, create the appropriate element.
+      if (file.type.startsWith("image/")) {
+        const img = new Image();
+        img.onload = function() {
+          const originalWidth = img.naturalWidth;
+          const originalHeight = img.naturalHeight;
+          // Scale the box (e.g., up to 400x300) while preserving aspect ratio.
+          const scale = Math.min(400 / originalWidth, 300 / originalHeight, 1);
+          fileBox.style.width = (originalWidth * scale) + "px";
+          fileBox.style.height = (originalHeight * scale) + "px";
+          fileBox.appendChild(img);
+          addResizer(fileBox);
+          makeDraggable(fileBox);
+        }
+        img.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.controls = true;
+        video.onloadedmetadata = function() {
+          const originalWidth = video.videoWidth;
+          const originalHeight = video.videoHeight;
+          const scale = Math.min(400 / originalWidth, 300 / originalHeight, 1);
+          fileBox.style.width = (originalWidth * scale) + "px";
+          fileBox.style.height = (originalHeight * scale) + "px";
+          fileBox.appendChild(video);
+          addResizer(fileBox);
+          makeDraggable(fileBox);
+        }
+        video.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith("audio/")) {
+        fileBox.style.width = "300px";
+        fileBox.style.height = "50px";
+        const audio = document.createElement("audio");
+        audio.controls = true;
+        audio.src = URL.createObjectURL(file);
+        fileBox.appendChild(audio);
+        addResizer(fileBox);
+        makeDraggable(fileBox);
+      } else {
+        fileBox.style.width = "200px";
+        fileBox.style.height = "200px";
+        const fileLink = document.createElement("a");
+        fileLink.href = URL.createObjectURL(file);
+        fileLink.textContent = file.name;
+        fileLink.target = "_blank";
+        fileBox.appendChild(fileLink);
+        addResizer(fileBox);
+        makeDraggable(fileBox);
+      }
+      
+      // Allow the file box to be edited (e.g., to add captions) later on.
+      fileBox.contentEditable = "true";
+      
+      uploadContainer.appendChild(fileBox);
+    }
+    
+    // Make an element draggable within its parent container.
+    function makeDraggable(el) {
+      let isDragging = false;
+      let startX, startY, origX, origY;
+      
+      el.addEventListener("mousedown", dragStart);
+      
+      function dragStart(e) {
+        // Skip if clicking on the resizer.
+        if (e.target.classList.contains("resizer")) return;
+        
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = el.getBoundingClientRect();
+        origX = rect.left;
+        origY = rect.top;
+        document.addEventListener("mousemove", dragMove);
+        document.addEventListener("mouseup", dragEnd);
+      }
+      
+      function dragMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        // Calculate new position relative to the parent container.
+        const parentRect = el.parentElement.getBoundingClientRect();
+        el.style.left = (origX + dx - parentRect.left) + "px";
+        el.style.top = (origY + dy - parentRect.top) + "px";
+      }
+      
+      function dragEnd() {
+        isDragging = false;
+        document.removeEventListener("mousemove", dragMove);
+        document.removeEventListener("mouseup", dragEnd);
+      }
+    }
+    
+    // Add a resizer handle to an element and make it resizable.
+    function addResizer(el) {
+      const resizer = document.createElement("div");
+      resizer.className = "resizer";
+      el.appendChild(resizer);
+      
+      let isResizing = false;
+      let startX, startY, startWidth, startHeight;
+      
+      resizer.addEventListener("mousedown", function(e) {
+        e.stopPropagation();
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = parseFloat(getComputedStyle(el, null).width.replace("px", ""));
+        startHeight = parseFloat(getComputedStyle(el, null).height.replace("px", ""));
+        document.addEventListener("mousemove", resizeMove);
+        document.addEventListener("mouseup", resizeEnd);
+      });
+      
+      function resizeMove(e) {
+        if (!isResizing) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        el.style.width = (startWidth + dx) + "px";
+        el.style.height = (startHeight + dy) + "px";
+      }
+      
+      function resizeEnd() {
+        isResizing = false;
+        document.removeEventListener("mousemove", resizeMove);
+        document.removeEventListener("mouseup", resizeEnd);
+      }
+    }
+    
+    window.onload = function() {
+      drawLinesAndParallelogram();
+      
+      // File input handling.
+      const fileInput = document.getElementById("file-input");
+      fileInput.addEventListener("change", function(e) {
+        handleFiles(e.target.files);
+      });
+      
+      setupDragAndDrop();
+    };
+    
     window.onresize = drawLinesAndParallelogram;
   </script>
   
